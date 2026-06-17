@@ -13,6 +13,8 @@ mod json;
 mod profile;
 pub mod profiles;
 
+pub(crate) use generic::playable_video_sources;
+
 /// Options passed to extractors.
 #[derive(Debug, Clone)]
 pub struct ExtractOptions {

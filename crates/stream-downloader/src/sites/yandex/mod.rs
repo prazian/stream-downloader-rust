@@ -20,8 +20,7 @@ pub fn matches_host(url: &Url) -> bool {
     if !is_yandex_host(host) {
         return false;
     }
-    url.path().contains("/video/preview")
-        || url.query().is_some_and(|q| q.contains("stream_id="))
+    url.path().contains("/video/preview") || url.query().is_some_and(|q| q.contains("stream_id="))
 }
 
 fn is_yandex_host(host: &str) -> bool {

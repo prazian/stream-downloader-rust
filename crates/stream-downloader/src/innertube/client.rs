@@ -1,7 +1,7 @@
 use crate::error::{Error, Result};
+use crate::innertube::PageKeys;
 use crate::innertube::config::ClientConfig;
 use crate::innertube::formats::PlayerResponse;
-use crate::innertube::PageKeys;
 
 pub async fn player(
     http: &reqwest::Client,

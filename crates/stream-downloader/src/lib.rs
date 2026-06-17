@@ -4,6 +4,7 @@ mod client;
 mod download;
 mod error;
 mod extract;
+mod hls;
 mod innertube;
 mod merge;
 mod model;
@@ -20,14 +21,14 @@ pub use extract::{
     ExtractOptions, Extractor, HostMatch, JsonMapRule, PageExtractor, ProfileRegistry, ProfileRule,
     SiteProfile,
 };
+pub use merge::prefetch_tools;
 pub use model::{FetchedPage, MediaKind, PageInfo, Stream};
-pub use quality::Quality;
 pub use naming::OutputName;
 pub use page::PageFetcher;
-pub use merge::prefetch_tools;
 pub use progress::{DownloadProgress, format_line};
-pub use sites::youtube;
+pub use quality::Quality;
 pub use sites::yandex;
+pub use sites::youtube;
 
 use std::path::Path;
 
@@ -185,6 +186,23 @@ mod tests {
         let missing = PathBuf::from("/tmp/stream-dl-missing-dir-test");
         let _ = std::fs::remove_dir_all(&missing);
         assert!(validate_output_dir(Some(missing.as_path())).is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore = "network"]
+    async fn live_okxxx_discover() {
+        let session = Session::new();
+        let streams = session
+            .discover(
+                "https://ok.xxx/video/750877/",
+                &[MediaKind::Video],
+                Quality::Height(720),
+            )
+            .await
+            .expect("discover");
+        assert!(!streams.is_empty());
+        assert!(streams[0].hls);
+        assert_eq!(crate::quality::height_hint(&streams[0]), 720);
     }
 
     #[tokio::test]

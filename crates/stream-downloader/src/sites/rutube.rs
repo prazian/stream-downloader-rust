@@ -48,10 +48,7 @@ async fn fetch_play_options(client: &reqwest::Client, id: &str) -> Result<PlayOp
 }
 
 fn streams_from_options(body: &PlayOptions, title: &str) -> Result<Vec<Stream>> {
-    let balancer = body
-        .video_balancer
-        .as_ref()
-        .ok_or(Error::NoStreamsFound)?;
+    let balancer = body.video_balancer.as_ref().ok_or(Error::NoStreamsFound)?;
     let mut out = Vec::new();
     for (name, url) in balancer {
         let is_hls = url.contains(".m3u8");

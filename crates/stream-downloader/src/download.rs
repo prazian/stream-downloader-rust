@@ -5,8 +5,8 @@ use crate::model::{MediaKind, MuxPart, Stream};
 use crate::naming::OutputName;
 use crate::progress::DownloadProgress;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tokio::task::JoinSet;
@@ -81,10 +81,7 @@ impl Downloader {
         options: &DownloadOptions<'_>,
         label: &str,
     ) -> Result<PathBuf> {
-        let stem = output
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("out");
+        let stem = output.file_stem().and_then(|s| s.to_str()).unwrap_or("out");
         let dir = output.parent().unwrap_or_else(|| Path::new("."));
         let video_part = dir.join(format!(".{stem}-video.part"));
         let audio_part = dir.join(format!(".{stem}-audio.part"));
@@ -144,14 +141,15 @@ impl Downloader {
             });
         }
         let url = stream.url.to_string();
-        let referer = stream.download_referer.or(options.referer).map(str::to_owned);
+        let referer = stream
+            .download_referer
+            .or(options.referer)
+            .map(str::to_owned);
         let output = path.to_path_buf();
         let out = output.clone();
-        tokio::task::spawn_blocking(move || {
-            merge::download_hls(&url, &out, referer.as_deref())
-        })
-        .await
-        .map_err(|e| crate::error::Error::Merge(e.to_string()))??;
+        tokio::task::spawn_blocking(move || merge::download_hls(&url, &out, referer.as_deref()))
+            .await
+            .map_err(|e| crate::error::Error::Merge(e.to_string()))??;
         Ok(output)
     }
 
@@ -169,7 +167,11 @@ impl Downloader {
                 .await;
         }
 
-        let mut response = self.build_request(stream, options).send().await?.error_for_status()?;
+        let mut response = self
+            .build_request(stream, options)
+            .send()
+            .await?
+            .error_for_status()?;
         let total = total.or_else(|| response.content_length());
         let mut downloaded = 0u64;
         let mut last_pct = None::<u32>;
@@ -197,8 +199,7 @@ impl Downloader {
             .send()
             .await?
             .error_for_status()?;
-        let total = content_range_total(response.headers())
-            .or_else(|| response.content_length());
+        let total = content_range_total(response.headers()).or_else(|| response.content_length());
         let ranges = response
             .headers()
             .get(reqwest::header::ACCEPT_RANGES)
@@ -207,7 +208,11 @@ impl Downloader {
         Ok((total, ranges))
     }
 
-    fn build_request(&self, stream: &Stream, options: &DownloadOptions<'_>) -> reqwest::RequestBuilder {
+    fn build_request(
+        &self,
+        stream: &Stream,
+        options: &DownloadOptions<'_>,
+    ) -> reqwest::RequestBuilder {
         let mut request = self.client.get(stream.url.clone());
         let referer = stream.download_referer.or(options.referer);
         if let Some(referer) = referer {
@@ -254,14 +259,16 @@ impl Downloader {
 
             let client = self.client.clone();
             let url = stream.url.clone();
-            let referer = stream.download_referer.or(options.referer).map(str::to_owned);
+            let referer = stream
+                .download_referer
+                .or(options.referer)
+                .map(str::to_owned);
             let ua = stream.download_user_agent.map(str::to_owned);
             let counter = Arc::clone(&downloaded);
             set.spawn(async move {
-                let mut req = client.get(url).header(
-                    reqwest::header::RANGE,
-                    format!("bytes={start}-{end}"),
-                );
+                let mut req = client
+                    .get(url)
+                    .header(reqwest::header::RANGE, format!("bytes={start}-{end}"));
                 if let Some(referer) = &referer {
                     req = req.header(reqwest::header::REFERER, referer);
                 }

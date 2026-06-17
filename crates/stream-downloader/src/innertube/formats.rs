@@ -19,7 +19,9 @@ pub fn select_for_kinds(
     if kinds.contains(&MediaKind::Video) {
         out.extend(select_videos(sd, options.quality, user_agent));
     }
-    if kinds.contains(&MediaKind::Audio) && let Some(s) = best_audio(sd, user_agent) {
+    if kinds.contains(&MediaKind::Audio)
+        && let Some(s) = best_audio(sd, user_agent)
+    {
         out.push(s);
     }
     out
@@ -67,7 +69,12 @@ fn best_audio(sd: &StreamingData, ua: &'static str) -> Option<Stream> {
         .and_then(|f| stream_from(f, MediaKind::Audio, ua, None))
 }
 
-fn stream_from(f: &Format, kind: MediaKind, ua: &'static str, mux: Option<MuxPart>) -> Option<Stream> {
+fn stream_from(
+    f: &Format,
+    kind: MediaKind,
+    ua: &'static str,
+    mux: Option<MuxPart>,
+) -> Option<Stream> {
     Some(Stream {
         url: Url::parse(f.url.as_ref()?).ok()?,
         kind,
@@ -102,7 +109,9 @@ fn is_video_only(f: &Format) -> bool {
 }
 
 fn is_audio(f: &Format) -> bool {
-    f.mime_type.as_deref().is_some_and(|m| m.starts_with("audio/"))
+    f.mime_type
+        .as_deref()
+        .is_some_and(|m| m.starts_with("audio/"))
 }
 
 #[derive(Debug, Deserialize)]

@@ -3,7 +3,7 @@
 use crate::error::{Error, Result};
 use crate::extract::ExtractOptions;
 use crate::model::{MediaKind, Stream};
-use crate::quality::Quality;
+use crate::quality;
 use url::Url;
 
 pub const REFERER: &str = "https://vk.com/";
@@ -11,8 +11,7 @@ const USER_AGENT: &str = crate::client::BROWSER_UA;
 
 pub fn matches_host(url: &Url) -> bool {
     url.host_str().is_some_and(|h| {
-        matches!(h, "vk.com" | "vk.ru" | "m.vk.com" | "vkvideo.ru")
-            || h.ends_with(".vk.com")
+        matches!(h, "vk.com" | "vk.ru" | "m.vk.com" | "vkvideo.ru") || h.ends_with(".vk.com")
     })
 }
 
@@ -55,7 +54,7 @@ pub async fn extract(
     let key = video_key(url).ok_or_else(|| Error::InvalidUrl("missing VK video id".into()))?;
     let text = fetch_player_payload(client, &key).await?;
     let streams = parse_sources(&text)?;
-    pick_quality(streams, options.quality)
+    quality::pick_streams_prefer_progressive(streams, options.quality)
 }
 
 async fn fetch_player_payload(client: &reqwest::Client, key: &str) -> Result<String> {
@@ -133,36 +132,10 @@ fn vk_type_height(url: &str) -> Option<u32> {
     })
 }
 
-fn pick_quality(mut streams: Vec<Stream>, quality: Quality) -> Result<Vec<Stream>> {
-    streams.sort_by_key(|b| (b.hls, std::cmp::Reverse(crate::quality::height_hint(b))));
-    Ok(match quality {
-        Quality::All => streams,
-        Quality::Best => vec![streams.remove(0)],
-        Quality::Height(h) => {
-            let exact: Vec<_> = streams
-                .iter()
-                .filter(|s| crate::quality::height_hint(s) == h)
-                .cloned()
-                .collect();
-            if !exact.is_empty() {
-                return Ok(exact);
-            }
-            let fallback: Vec<_> = streams
-                .into_iter()
-                .filter(|s| crate::quality::height_hint(s) <= h)
-                .take(1)
-                .collect();
-            if fallback.is_empty() {
-                return Err(Error::NoStreamsFound);
-            }
-            fallback
-        }
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::quality::Quality;
 
     #[test]
     fn parses_video_keys() {
@@ -176,8 +149,12 @@ mod tests {
         let streams = parse_sources(&html).unwrap();
         assert!(streams.iter().any(|s| s.hls));
         assert!(streams.iter().any(|s| !s.hls));
-        assert!(!streams.iter().any(|s| s.url.as_str().contains("getVideoPreview")));
-        let best = pick_quality(streams, Quality::Best).unwrap();
+        assert!(
+            !streams
+                .iter()
+                .any(|s| s.url.as_str().contains("getVideoPreview"))
+        );
+        let best = quality::pick_streams_prefer_progressive(streams, Quality::Best).unwrap();
         assert!(!best[0].hls);
     }
 }

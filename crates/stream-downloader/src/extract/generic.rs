@@ -82,6 +82,27 @@ pub fn select_attr(
         .collect()
 }
 
+/// Full-length `<video source>` entries, skipping preview clips and Auto duplicates.
+pub(crate) fn playable_video_sources(document: &Html, base: &Url) -> Vec<Stream> {
+    select_attr(
+        document,
+        "video source",
+        "src",
+        base,
+        Some(MediaKind::Video),
+        Some("label"),
+    )
+    .into_iter()
+    .filter(|s| {
+        !s.url.path().contains("preview")
+            && !s
+                .label
+                .as_deref()
+                .is_some_and(|l| l.eq_ignore_ascii_case("auto"))
+    })
+    .collect()
+}
+
 fn links_by_extension(document: &Html, base: &Url, kinds: &HashSet<MediaKind>) -> Vec<Stream> {
     let Ok(sel) = Selector::parse("a[href]") else {
         return Vec::new();
@@ -142,6 +163,21 @@ mod tests {
             },
         );
         assert_eq!(streams.len(), 2);
+    }
+
+    #[test]
+    fn skips_preview_and_auto_sources() {
+        let html = r#"
+            <video>
+                <source src="/preview.mp4" label="preview" />
+                <source src="/360.mp4" label="Auto" />
+                <source src="/720.mp4" label="720p" />
+            </video>
+        "#;
+        let document = Html::parse_document(html);
+        let sources = playable_video_sources(&document, &page_url());
+        assert_eq!(sources.len(), 1);
+        assert_eq!(sources[0].label.as_deref(), Some("720p"));
     }
 
     #[test]

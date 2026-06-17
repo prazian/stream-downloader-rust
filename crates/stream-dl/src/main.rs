@@ -85,14 +85,16 @@ mod tests {
 
     #[test]
     fn quality_flags_conflict() {
-        assert!(Cli::try_parse_from([
-            "stream-dl",
-            "-u",
-            "https://example.com",
-            "--all",
-            "-q",
-            "720p"
-        ])
-        .is_err());
+        assert!(
+            Cli::try_parse_from([
+                "stream-dl",
+                "-u",
+                "https://example.com",
+                "--all",
+                "-q",
+                "720p"
+            ])
+            .is_err()
+        );
     }
 }

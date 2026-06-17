@@ -28,25 +28,23 @@ impl PageExtractor {
         page: &FetchedPage,
         options: &ExtractOptions,
     ) -> crate::error::Result<Vec<Stream>> {
-        let mut streams = {
-            let document = Html::parse_document(&page.html);
-            let mut found = generic::extract(&document, &page.info.url, options);
-            for profile in self.registry.matching(&page.info.url) {
-                found.extend(apply_profile(
-                    profile,
-                    &page.html,
-                    &document,
-                    &page.info.url,
-                    options,
-                ));
-            }
-            found
-        };
+        let site_streams = sites::extract_for_host(client, page, options).await?;
+        if !site_streams.is_empty() {
+            return Ok(site_streams);
+        }
 
-        streams.extend(sites::extract_for_host(client, page, options).await?);
-        Ok(options
-            .quality
-            .filter_streams(dedupe_streams(streams)))
+        let document = Html::parse_document(&page.html);
+        let mut streams = generic::extract(&document, &page.info.url, options);
+        for profile in self.registry.matching(&page.info.url) {
+            streams.extend(apply_profile(
+                profile,
+                &page.html,
+                &document,
+                &page.info.url,
+                options,
+            ));
+        }
+        Ok(options.quality.filter_streams(dedupe_streams(streams)))
     }
 }
 

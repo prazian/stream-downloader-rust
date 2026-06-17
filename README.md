@@ -89,4 +89,22 @@ stream-dl -u "https://frontend.vh.yandex.ru/player/vIsS3AJqE7Y4"
 
 HLS streams download via ffmpeg (same bundled binary as YouTube HD mux).
 
-Upstream hosts from Yandex previews: **OK.ru**, VK, Rutube, YouTube, native Yandex VH.
+Upstream hosts from Yandex previews: OK.ru, VK, Rutube, YouTube, native Yandex VH.
+
+## OK.ru
+
+```bash
+stream-dl -u "https://ok.ru/video/9729432226499" -q 1080p
+```
+
+Embed metadata → progressive MP4 (parallel range download for large files).
+
+## ok.xxx
+
+Separate site from OK.ru:
+
+```bash
+stream-dl -u "https://ok.xxx/video/750877/" -q 720p
+```
+
+HLS via ffmpeg; max quality depends on what the page exposes (often 720p).

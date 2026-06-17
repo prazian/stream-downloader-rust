@@ -1,6 +1,7 @@
 //! Site-specific extractors. Each module owns one host family.
 
 pub mod ok;
+pub mod okxxx;
 pub mod rutube;
 pub mod vk;
 pub mod yandex;
@@ -29,6 +30,9 @@ pub async fn extract_for_host(
     }
     if ok::matches_host(&page.info.url) {
         return ok::extract(client, &page.info.url, &page.info.title, options).await;
+    }
+    if okxxx::matches_host(&page.info.url) {
+        return okxxx::extract(client, page, options).await;
     }
     Ok(Vec::new())
 }

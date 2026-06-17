@@ -96,7 +96,13 @@ async fn fetch_content(client: &reqwest::Client, content_id: &str) -> Result<VhC
     let url = format!(
         "https://frontend.vh.yandex.ru/v23/player/{content_id}.json?stream_options=hires&disable_trackings=1"
     );
-    let body: VhResponse = client.get(url).send().await?.error_for_status()?.json().await?;
+    let body: VhResponse = client
+        .get(url)
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
     body.content.ok_or(Error::NoStreamsFound)
 }
 
@@ -126,8 +132,9 @@ mod tests {
     fn parses_content_ids() {
         let url = Url::parse("https://frontend.vh.yandex.ru/player/vIsS3AJqE7Y4").unwrap();
         assert_eq!(content_id(&url).as_deref(), Some("vIsS3AJqE7Y4"));
-        let url = Url::parse("https://yandex.ru/portal/video?stream_id=4dbb36ec4e0526d58f9f2dc8f0ecf374")
-            .unwrap();
+        let url =
+            Url::parse("https://yandex.ru/portal/video?stream_id=4dbb36ec4e0526d58f9f2dc8f0ecf374")
+                .unwrap();
         assert_eq!(
             content_id(&url).as_deref(),
             Some("4dbb36ec4e0526d58f9f2dc8f0ecf374")
@@ -136,9 +143,10 @@ mod tests {
 
     #[test]
     fn picks_best_signed_stream_from_fixture() {
-        let body: VhResponse =
-            serde_json::from_str(include_str!("../../../tests/fixtures/yandex_vh_player.json"))
-                .unwrap();
+        let body: VhResponse = serde_json::from_str(include_str!(
+            "../../../tests/fixtures/yandex_vh_player.json"
+        ))
+        .unwrap();
         let content = body.content.unwrap();
         let signed = content.streams.as_ref().unwrap()[0].url.clone().unwrap();
         let stream = Stream {

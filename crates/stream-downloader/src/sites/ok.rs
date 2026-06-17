@@ -1,9 +1,11 @@
-//! OK.ru (Odnoklassniki) — embed page metadata with per-quality MP4 URLs.
+//! OK.ru — embed page metadata with per-quality MP4 URLs.
+//!
+//! Also a Yandex Video preview upstream. Not related to [`super::okxxx`] (`ok.xxx`).
 
 use crate::error::{Error, Result};
 use crate::extract::ExtractOptions;
 use crate::model::{MediaKind, Stream};
-use crate::quality::Quality;
+use crate::quality;
 use serde_json::Value;
 use url::Url;
 
@@ -43,7 +45,7 @@ pub async fn extract(
     let id = video_id(url).ok_or_else(|| Error::InvalidUrl("missing OK.ru video id".into()))?;
     let metadata = fetch_metadata(client, &id).await?;
     let streams = streams_from_metadata(&metadata)?;
-    pick_quality(streams, options.quality)
+    quality::pick_streams(streams, options.quality)
 }
 
 async fn fetch_metadata(client: &reqwest::Client, id: &str) -> Result<Value> {
@@ -56,9 +58,7 @@ async fn fetch_metadata(client: &reqwest::Client, id: &str) -> Result<Value> {
         .text()
         .await?;
     let options = parse_data_options(&html)?;
-    let flashvars = options
-        .get("flashvars")
-        .ok_or(Error::NoStreamsFound)?;
+    let flashvars = options.get("flashvars").ok_or(Error::NoStreamsFound)?;
     if let Some(url) = flashvars.get("url").and_then(Value::as_str)
         && options.get("isExternalPlayer").and_then(Value::as_bool) == Some(true)
     {
@@ -66,7 +66,9 @@ async fn fetch_metadata(client: &reqwest::Client, id: &str) -> Result<Value> {
     }
     if let Some(raw) = flashvars.get("metadata") {
         return Ok(match raw {
-            Value::String(s) => serde_json::from_str(s).map_err(|e| Error::InvalidUrl(e.to_string()))?,
+            Value::String(s) => {
+                serde_json::from_str(s).map_err(|e| Error::InvalidUrl(e.to_string()))?
+            }
             v => v.clone(),
         });
     }
@@ -86,14 +88,8 @@ async fn fetch_metadata(client: &reqwest::Client, id: &str) -> Result<Value> {
 
 fn parse_data_options(html: &str) -> Result<Value> {
     let marker = "data-options=\"";
-    let start = html
-        .find(marker)
-        .ok_or(Error::NoStreamsFound)?
-        + marker.len();
-    let end = html[start..]
-        .find('"')
-        .ok_or(Error::NoStreamsFound)?
-        + start;
+    let start = html.find(marker).ok_or(Error::NoStreamsFound)? + marker.len();
+    let end = html[start..].find('"').ok_or(Error::NoStreamsFound)? + start;
     let raw = html[start..end].replace("&quot;", "\"");
     serde_json::from_str(&raw).map_err(|e| Error::InvalidUrl(e.to_string()))
 }
@@ -139,33 +135,6 @@ fn ok_name_height(name: &str) -> u32 {
     }
 }
 
-fn pick_quality(mut streams: Vec<Stream>, quality: Quality) -> Result<Vec<Stream>> {
-    streams.sort_by_key(|s| std::cmp::Reverse(crate::quality::height_hint(s)));
-    Ok(match quality {
-        Quality::All => streams,
-        Quality::Best => vec![streams.remove(0)],
-        Quality::Height(h) => {
-            let exact: Vec<_> = streams
-                .iter()
-                .filter(|s| crate::quality::height_hint(s) == h)
-                .cloned()
-                .collect();
-            if !exact.is_empty() {
-                return Ok(exact);
-            }
-            let fallback: Vec<_> = streams
-                .into_iter()
-                .filter(|s| crate::quality::height_hint(s) <= h)
-                .take(1)
-                .collect();
-            if fallback.is_empty() {
-                return Err(Error::NoStreamsFound);
-            }
-            fallback
-        }
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -180,29 +149,5 @@ mod tests {
     fn maps_quality_names() {
         assert_eq!(ok_name_height("full"), 1080);
         assert_eq!(ok_name_height("hd"), 720);
-    }
-
-    #[test]
-    fn picks_1080p() {
-        let streams = vec![
-            stream_for_height(720),
-            stream_for_height(1080),
-            stream_for_height(480),
-        ];
-        let picked = pick_quality(streams, Quality::Height(1080)).unwrap();
-        assert_eq!(picked.len(), 1);
-        assert_eq!(crate::quality::height_hint(&picked[0]), 1080);
-    }
-
-    fn stream_for_height(h: u32) -> Stream {
-        Stream {
-            url: Url::parse("https://example.com/v.mp4").unwrap(),
-            kind: MediaKind::Video,
-            label: Some(format!("{h}p")),
-            download_user_agent: None,
-            mux_audio: None,
-            hls: false,
-            download_referer: None,
-        }
     }
 }

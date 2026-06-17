@@ -38,10 +38,7 @@ impl OutputName {
 
 fn clean_title_for_filename(title: &str) -> String {
     let t = title.trim();
-    t.strip_suffix(" - YouTube")
-        .unwrap_or(t)
-        .trim()
-        .to_string()
+    t.strip_suffix(" - YouTube").unwrap_or(t).trim().to_string()
 }
 
 fn slugify(input: &str) -> String {
