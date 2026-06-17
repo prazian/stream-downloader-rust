@@ -1,0 +1,22 @@
+[package]
+name = "stream-downloader"
+version = "0.1.0"
+edition.workspace = true
+description = "Identify and download media streams from web pages"
+publish = false
+
+[lib]
+doctest = true
+
+[dependencies]
+reqwest.workspace = true
+scraper.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+ffmpeg-sidecar.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }

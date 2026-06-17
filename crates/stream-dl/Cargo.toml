@@ -1,0 +1,20 @@
+[package]
+name = "stream-dl"
+version = "0.1.0"
+edition.workspace = true
+description = "CLI for stream-downloader"
+publish = false
+default-run = "stream-dl"
+
+[[bin]]
+name = "stream-dl"
+path = "src/main.rs"
+
+[[bin]]
+name = "prefetch-tools"
+path = "src/bin/prefetch-tools.rs"
+
+[dependencies]
+clap.workspace = true
+stream-downloader = { path = "../stream-downloader" }
+tokio.workspace = true

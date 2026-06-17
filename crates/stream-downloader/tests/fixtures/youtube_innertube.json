@@ -1,0 +1,37 @@
+{
+  "playabilityStatus": { "status": "OK" },
+  "streamingData": {
+    "formats": [
+      {
+        "itag": 18,
+        "url": "https://rr2---sn-test.googlevideo.com/videoplayback?itag=18",
+        "mimeType": "video/mp4; codecs=\"avc1.42001E, mp4a.40.2\"",
+        "qualityLabel": "360p",
+        "height": 360,
+        "audioChannels": 2
+      }
+    ],
+    "adaptiveFormats": [
+      {
+        "itag": 137,
+        "url": "https://rr2---sn-test.googlevideo.com/videoplayback?itag=137",
+        "mimeType": "video/mp4; codecs=\"avc1.640028\"",
+        "qualityLabel": "1080p",
+        "height": 1080
+      },
+      {
+        "itag": 136,
+        "url": "https://rr2---sn-test.googlevideo.com/videoplayback?itag=136",
+        "mimeType": "video/mp4; codecs=\"avc1.64001f\"",
+        "qualityLabel": "720p",
+        "height": 720
+      },
+      {
+        "itag": 140,
+        "url": "https://rr2---sn-test.googlevideo.com/videoplayback?itag=140",
+        "mimeType": "audio/mp4; codecs=\"mp4a.40.2\"",
+        "bitrate": 128000
+      }
+    ]
+  }
+}
