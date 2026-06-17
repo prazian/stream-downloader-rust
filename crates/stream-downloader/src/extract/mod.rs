@@ -14,6 +14,7 @@ mod profile;
 pub mod profiles;
 
 pub(crate) use generic::playable_video_sources;
+pub(crate) use json::extract_json_object;
 
 /// Options passed to extractors.
 #[derive(Debug, Clone)]

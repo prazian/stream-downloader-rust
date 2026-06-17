@@ -114,7 +114,7 @@ pub fn extract_embedded_json(html: &str, marker: &str) -> Option<String> {
     extract_json_object(rest)
 }
 
-fn extract_json_object(input: &str) -> Option<String> {
+pub(crate) fn extract_json_object(input: &str) -> Option<String> {
     if !input.starts_with('{') {
         return None;
     }

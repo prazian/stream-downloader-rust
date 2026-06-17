@@ -162,17 +162,32 @@ impl Downloader {
     ) -> Result<()> {
         let (total, ranges) = self.probe(stream, options).await?;
         if ranges && total.is_some_and(|t| t >= MIN_PARALLEL_BYTES) {
-            return self
+            match self
                 .download_parallel(stream, path, options, label, total.unwrap())
-                .await;
+                .await
+            {
+                Ok(()) => return Ok(()),
+                Err(e) if retriable_http(&e) => {
+                    let _ = remove_parallel_parts(path);
+                }
+                Err(e) => return Err(e),
+            }
         }
 
-        let mut response = self
-            .build_request(stream, options)
-            .send()
-            .await?
-            .error_for_status()?;
-        let total = total.or_else(|| response.content_length());
+        self.download_sequential(stream, path, options, label, total)
+            .await
+    }
+
+    async fn download_sequential(
+        &self,
+        stream: &Stream,
+        path: &Path,
+        options: &DownloadOptions<'_>,
+        label: &str,
+        total_hint: Option<u64>,
+    ) -> Result<()> {
+        let mut response = send_with_retry(self.build_request(stream, options), None).await?;
+        let total = total_hint.or_else(|| response.content_length());
         let mut downloaded = 0u64;
         let mut last_pct = None::<u32>;
         report(options, label, downloaded, total, &mut last_pct);
@@ -193,12 +208,12 @@ impl Downloader {
         stream: &Stream,
         options: &DownloadOptions<'_>,
     ) -> Result<(Option<u64>, bool)> {
-        let response = self
-            .build_request(stream, options)
-            .header(reqwest::header::RANGE, "bytes=0-0")
-            .send()
-            .await?
-            .error_for_status()?;
+        let response = send_with_retry(
+            self.build_request(stream, options)
+                .header(reqwest::header::RANGE, "bytes=0-0"),
+            None,
+        )
+        .await?;
         let total = content_range_total(response.headers()).or_else(|| response.content_length());
         let ranges = response
             .headers()
@@ -232,7 +247,7 @@ impl Downloader {
         label: &str,
         total: u64,
     ) -> Result<()> {
-        let chunks = parallel_chunks(total);
+        let chunks = parallel_chunks(total, &stream.url);
         let chunk_size = total.div_ceil(chunks as u64);
         let parent = path.parent().unwrap_or_else(|| Path::new("."));
         let stem = path
@@ -266,16 +281,23 @@ impl Downloader {
             let ua = stream.download_user_agent.map(str::to_owned);
             let counter = Arc::clone(&downloaded);
             set.spawn(async move {
-                let mut req = client
-                    .get(url)
-                    .header(reqwest::header::RANGE, format!("bytes={start}-{end}"));
-                if let Some(referer) = &referer {
-                    req = req.header(reqwest::header::REFERER, referer);
-                }
-                if let Some(ua) = &ua {
-                    req = req.header(reqwest::header::USER_AGENT, ua);
-                }
-                let mut response = req.send().await?.error_for_status()?;
+                let range = format!("bytes={start}-{end}");
+                let mut response = send_with_retry(
+                    {
+                        let mut req = client
+                            .get(url)
+                            .header(reqwest::header::RANGE, range.clone());
+                        if let Some(referer) = &referer {
+                            req = req.header(reqwest::header::REFERER, referer);
+                        }
+                        if let Some(ua) = &ua {
+                            req = req.header(reqwest::header::USER_AGENT, ua);
+                        }
+                        req
+                    },
+                    Some(range),
+                )
+                .await?;
                 let mut file = tokio::fs::File::create(&part).await?;
                 while let Some(chunk) = response.chunk().await? {
                     file.write_all(&chunk).await?;
@@ -322,15 +344,84 @@ impl Downloader {
     }
 }
 
-fn parallel_chunks(total: u64) -> usize {
-    let target = match total {
+fn parallel_chunks(total: u64, url: &url::Url) -> usize {
+    let mut chunks = match total {
         n if n < 20 * 1024 * 1024 => 2,
         n if n < 100 * 1024 * 1024 => 4,
         n if n < 512 * 1024 * 1024 => 8,
         _ => 16,
     };
     let by_chunk_size = (total / MIN_CHUNK_BYTES) as usize;
-    target.min(by_chunk_size).clamp(1, MAX_PARALLEL_CHUNKS)
+    chunks = chunks.min(by_chunk_size).clamp(1, MAX_PARALLEL_CHUNKS);
+    if url.host_str().is_some_and(|h| h.contains("phncdn.com")) {
+        chunks = chunks.min(4);
+    }
+    chunks
+}
+
+const RETRYABLE_STATUS: [u16; 3] = [429, 502, 503];
+const RETRY_ATTEMPTS: u32 = 4;
+
+async fn send_with_retry(
+    builder: reqwest::RequestBuilder,
+    range: Option<String>,
+) -> Result<reqwest::Response> {
+    let mut delay = Duration::from_millis(400);
+    let mut last = None;
+    for attempt in 0..RETRY_ATTEMPTS {
+        let mut req = builder
+            .try_clone()
+            .ok_or_else(|| crate::error::Error::Merge("failed to clone HTTP request".into()))?;
+        if let Some(range) = &range {
+            req = req.header(reqwest::header::RANGE, range);
+        }
+        match req.send().await {
+            Ok(response) => {
+                let status = response.status();
+                if RETRYABLE_STATUS.contains(&status.as_u16()) && attempt + 1 < RETRY_ATTEMPTS {
+                    tokio::time::sleep(delay).await;
+                    delay *= 2;
+                    continue;
+                }
+                return response.error_for_status().map_err(Into::into);
+            }
+            Err(e) if (e.is_timeout() || e.is_connect()) && attempt + 1 < RETRY_ATTEMPTS => {
+                last = Some(crate::error::Error::Http(e));
+                tokio::time::sleep(delay).await;
+                delay *= 2;
+            }
+            Err(e) => return Err(e.into()),
+        }
+    }
+    Err(last
+        .unwrap_or_else(|| crate::error::Error::Merge("HTTP request failed after retries".into())))
+}
+
+fn retriable_http(err: &crate::error::Error) -> bool {
+    matches!(
+        err,
+        crate::error::Error::Http(e)
+            if e.status()
+                .is_some_and(|s| RETRYABLE_STATUS.contains(&s.as_u16()))
+    )
+}
+
+fn remove_parallel_parts(path: &Path) -> std::io::Result<()> {
+    let Some(parent) = path.parent() else {
+        return Ok(());
+    };
+    let Some(stem) = path.file_name().and_then(|s| s.to_str()) else {
+        return Ok(());
+    };
+    for entry in std::fs::read_dir(parent)? {
+        let entry = entry?;
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if name.starts_with(&format!(".{stem}.part")) {
+            let _ = std::fs::remove_file(entry.path());
+        }
+    }
+    Ok(())
 }
 
 fn content_range_total(headers: &reqwest::header::HeaderMap) -> Option<u64> {
@@ -401,11 +492,14 @@ mod tests {
 
     #[test]
     fn adaptive_parallel_chunks() {
-        assert_eq!(parallel_chunks(5 * 1024 * 1024), 1);
-        assert_eq!(parallel_chunks(20 * 1024 * 1024), 2);
-        assert_eq!(parallel_chunks(50 * 1024 * 1024), 4);
-        assert_eq!(parallel_chunks(200 * 1024 * 1024), 8);
-        assert_eq!(parallel_chunks(2 * 1024 * 1024 * 1024), 16);
+        let ph = url::Url::parse("https://ev.phncdn.com/v.mp4").unwrap();
+        let cdn = url::Url::parse("https://cdn.example.com/v.mp4").unwrap();
+        assert_eq!(parallel_chunks(5 * 1024 * 1024, &cdn), 1);
+        assert_eq!(parallel_chunks(20 * 1024 * 1024, &cdn), 2);
+        assert_eq!(parallel_chunks(50 * 1024 * 1024, &cdn), 4);
+        assert_eq!(parallel_chunks(200 * 1024 * 1024, &cdn), 8);
+        assert_eq!(parallel_chunks(2 * 1024 * 1024 * 1024, &cdn), 16);
+        assert_eq!(parallel_chunks(2 * 1024 * 1024 * 1024, &ph), 4);
     }
 
     #[test]

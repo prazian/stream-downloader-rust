@@ -102,6 +102,7 @@ impl Session {
         let referer = page.info.url.as_str();
         let mut results = Vec::with_capacity(streams.len());
         for stream in streams {
+            let stream = refresh_stream(&self.client, &page, stream).await?;
             let name = OutputName::for_stream(&page.info, &stream);
             let path = self
                 .downloader
@@ -119,6 +120,17 @@ impl Session {
         }
         Ok(results)
     }
+}
+
+async fn refresh_stream(
+    client: &reqwest::Client,
+    page: &FetchedPage,
+    stream: Stream,
+) -> Result<Stream> {
+    if sites::pornhub::matches_host(&page.info.url) {
+        return sites::pornhub::refresh_stream(client, page, &stream).await;
+    }
+    Ok(stream)
 }
 
 /// Validate a page URL before any network I/O.
@@ -186,6 +198,23 @@ mod tests {
         let missing = PathBuf::from("/tmp/stream-dl-missing-dir-test");
         let _ = std::fs::remove_dir_all(&missing);
         assert!(validate_output_dir(Some(missing.as_path())).is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore = "network"]
+    async fn live_pornhub_discover() {
+        let session = Session::new();
+        let streams = session
+            .discover(
+                "https://www.pornhub.com/view_video.php?viewkey=660c3362e7ef7",
+                &[MediaKind::Video],
+                Quality::Height(1080),
+            )
+            .await
+            .expect("discover");
+        assert!(!streams.is_empty());
+        assert!(!streams[0].hls);
+        assert_eq!(crate::quality::height_hint(&streams[0]), 1080);
     }
 
     #[tokio::test]

@@ -108,3 +108,11 @@ stream-dl -u "https://ok.xxx/video/750877/" -q 720p
 ```
 
 HLS via ffmpeg; max quality depends on what the page exposes (often 720p).
+
+## Pornhub
+
+```bash
+stream-dl -u "https://www.pornhub.com/view_video.php?viewkey=660c3362e7ef7" -q 1080p
+```
+
+Parses `flashvars_*` / `mediaDefinitions`; resolves remote `get_media` for progressive MP4 (falls back to HLS).
