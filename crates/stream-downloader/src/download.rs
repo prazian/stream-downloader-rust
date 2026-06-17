@@ -3,14 +3,16 @@ use crate::error::Result;
 use crate::merge;
 use crate::model::{MediaKind, MuxPart, Stream};
 use crate::naming::OutputName;
+use crate::progress::DownloadProgress;
 use std::path::{Path, PathBuf};
 use tokio::io::AsyncWriteExt;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct DownloadOptions<'a> {
     pub output_dir: &'a Path,
     /// Page the stream was discovered on; sent as `Referer` for CDN hotlink checks.
     pub referer: Option<&'a str>,
+    pub on_progress: Option<&'a (dyn Fn(DownloadProgress<'_>) + Send + Sync)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -53,7 +55,8 @@ impl Downloader {
                 .await;
         }
 
-        self.download_to_path(stream, &path, options).await?;
+        self.download_to_path(stream, &path, options, &name.file_name)
+            .await?;
         Ok(path)
     }
 
@@ -72,7 +75,10 @@ impl Downloader {
         let video_part = dir.join(format!(".{stem}-video.part"));
         let audio_part = dir.join(format!(".{stem}-audio.part"));
 
-        self.download_to_path(video, &video_part, options).await?;
+        let video_label = format!("{stem} (video)");
+        let audio_label = format!("{stem} (audio)");
+        self.download_to_path(video, &video_part, options, &video_label)
+            .await?;
         self.download_to_path(
             &Stream {
                 url: audio.url.clone(),
@@ -83,8 +89,17 @@ impl Downloader {
             },
             &audio_part,
             options,
+            &audio_label,
         )
         .await?;
+
+        if let Some(cb) = options.on_progress {
+            cb(DownloadProgress {
+                label: "Muxing…",
+                downloaded: 0,
+                total: None,
+            });
+        }
 
         let output = output.to_path_buf();
         let v = video_part.clone();
@@ -104,6 +119,7 @@ impl Downloader {
         stream: &Stream,
         path: &Path,
         options: &DownloadOptions<'_>,
+        label: &str,
     ) -> Result<()> {
         let mut request = self.client.get(stream.url.clone());
         if let Some(referer) = options.referer {
@@ -114,13 +130,55 @@ impl Downloader {
         }
 
         let mut response = request.send().await?.error_for_status()?;
+        let total = response.content_length();
+        let mut downloaded = 0u64;
+        let mut last_pct = None::<u32>;
+
+        report(options, label, downloaded, total, &mut last_pct);
+
         let mut file = tokio::fs::File::create(path).await?;
         while let Some(chunk) = response.chunk().await? {
             file.write_all(&chunk).await?;
+            downloaded += chunk.len() as u64;
+            report(options, label, downloaded, total, &mut last_pct);
         }
         file.flush().await?;
+        report(options, label, downloaded, total, &mut last_pct);
         Ok(())
     }
+}
+
+fn report(
+    options: &DownloadOptions<'_>,
+    label: &str,
+    downloaded: u64,
+    total: Option<u64>,
+    last_pct: &mut Option<u32>,
+) {
+    let Some(cb) = options.on_progress else {
+        return;
+    };
+    match total.filter(|&t| t > 0) {
+        Some(t) => {
+            let pct = (downloaded.saturating_mul(100) / t).min(100) as u32;
+            if downloaded < t && Some(pct) == *last_pct {
+                return;
+            }
+            *last_pct = Some(pct);
+        }
+        None => {
+            let bucket = (downloaded / (512 * 1024)) as u32;
+            if downloaded > 0 && Some(bucket) == *last_pct {
+                return;
+            }
+            *last_pct = Some(bucket);
+        }
+    }
+    cb(DownloadProgress {
+        label,
+        downloaded,
+        total,
+    });
 }
 
 fn unique_path(path: PathBuf) -> PathBuf {

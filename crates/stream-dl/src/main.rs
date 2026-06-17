@@ -1,7 +1,9 @@
 use clap::Parser;
+use std::io::Write;
 use std::path::PathBuf;
 use stream_downloader::{
-    DownloadOptions, MediaKind, Quality, Session, validate_output_dir, validate_page_url,
+    DownloadOptions, DownloadProgress, MediaKind, Quality, Session, format_line,
+    validate_output_dir, validate_page_url,
 };
 
 #[derive(Parser, Debug)]
@@ -52,6 +54,10 @@ async fn run(cli: Cli) -> stream_downloader::Result<()> {
     };
 
     let session = Session::new();
+    let on_progress = |p: DownloadProgress<'_>| {
+        let _ = write!(std::io::stderr(), "\r{}", format_line(p));
+        let _ = std::io::stderr().flush();
+    };
     let files = session
         .download_streams(
             &cli.url,
@@ -60,9 +66,12 @@ async fn run(cli: Cli) -> stream_downloader::Result<()> {
             &DownloadOptions {
                 output_dir: &cli.output.unwrap_or_else(|| PathBuf::from(".")),
                 referer: None,
+                on_progress: Some(&on_progress),
             },
         )
         .await?;
+
+    let _ = writeln!(std::io::stderr());
 
     for file in files {
         println!("{}", file.path.display());

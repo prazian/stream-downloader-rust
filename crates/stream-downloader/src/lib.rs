@@ -9,6 +9,7 @@ mod merge;
 mod model;
 mod naming;
 mod page;
+mod progress;
 mod quality;
 mod sites;
 
@@ -24,6 +25,7 @@ pub use quality::Quality;
 pub use naming::OutputName;
 pub use page::PageFetcher;
 pub use merge::prefetch_tools;
+pub use progress::{DownloadProgress, format_line};
 pub use sites::youtube;
 
 use std::path::Path;
@@ -107,6 +109,7 @@ impl Session {
                     &DownloadOptions {
                         output_dir: options.output_dir,
                         referer: Some(referer),
+                        on_progress: options.on_progress,
                     },
                 )
                 .await?;
