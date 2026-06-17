@@ -27,6 +27,7 @@ pub use page::PageFetcher;
 pub use merge::prefetch_tools;
 pub use progress::{DownloadProgress, format_line};
 pub use sites::youtube;
+pub use sites::yandex;
 
 use std::path::Path;
 
@@ -184,5 +185,21 @@ mod tests {
         let missing = PathBuf::from("/tmp/stream-dl-missing-dir-test");
         let _ = std::fs::remove_dir_all(&missing);
         assert!(validate_output_dir(Some(missing.as_path())).is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore = "network"]
+    async fn live_ok_preview_discover() {
+        let session = Session::new();
+        let streams = session
+            .discover(
+                "https://yandex.ru/video/preview/11285747945322644110?q_source=title",
+                &[MediaKind::Video],
+                Quality::Height(1080),
+            )
+            .await
+            .expect("discover");
+        assert!(!streams.is_empty());
+        assert_eq!(crate::quality::height_hint(&streams[0]), 1080);
     }
 }

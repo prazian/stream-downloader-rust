@@ -75,6 +75,8 @@ pub fn select_attr(
                 label,
                 download_user_agent: None,
                 mux_audio: None,
+                hls: false,
+                download_referer: None,
             })
         })
         .collect()
@@ -97,6 +99,8 @@ fn links_by_extension(document: &Html, base: &Url, kinds: &HashSet<MediaKind>) -
                     label: None,
                     download_user_agent: None,
                     mux_audio: None,
+                    hls: false,
+                    download_referer: None,
                 })
             } else {
                 None

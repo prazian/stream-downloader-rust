@@ -44,6 +44,8 @@ pub fn apply_rule(html: &str, rule: &JsonMapRule, options: &ExtractOptions) -> V
                 label: label_from_item(item, rule.label_key, rule.alt_label_key),
                 download_user_agent: None,
                 mux_audio: None,
+                hls: false,
+                download_referer: None,
             });
         }
     }

@@ -107,6 +107,8 @@ mod tests {
             label: label.map(str::to_owned),
             download_user_agent: None,
             mux_audio: None,
+            hls: false,
+            download_referer: None,
         }
     }
     #[test]

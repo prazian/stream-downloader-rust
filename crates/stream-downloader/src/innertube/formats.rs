@@ -77,6 +77,8 @@ fn stream_from(f: &Format, kind: MediaKind, ua: &'static str, mux: Option<MuxPar
             .or_else(|| f.itag.map(|t| t.to_string())),
         download_user_agent: Some(ua),
         mux_audio: mux,
+        hls: false,
+        download_referer: None,
     })
 }
 

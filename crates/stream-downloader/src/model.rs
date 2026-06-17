@@ -53,4 +53,8 @@ pub struct Stream {
     pub download_user_agent: Option<&'static str>,
     /// When set, download and mux with this audio (1080p+ YouTube, etc.).
     pub mux_audio: Option<MuxPart>,
+    /// HLS playlist — download via ffmpeg instead of a single GET.
+    pub hls: bool,
+    /// Overrides page referer for CDN hotlink checks.
+    pub download_referer: Option<&'static str>,
 }
