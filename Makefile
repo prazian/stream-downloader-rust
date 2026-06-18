@@ -38,13 +38,11 @@ install: build ## Install binary to ~/.cargo/bin
 prefetch-tools: ## Download bundled ffmpeg (cached under ~/.ffmpeg-sidecar)
 	$(CARGO) run -p $(BIN) --bin prefetch-tools
 
-release-minor: ## Bump minor version, commit, tag Vx.y (push tag to release)
-	@chmod +x scripts/release-tag.sh
-	@./scripts/release-tag.sh minor
+release-minor: ## Tag next minor release (push tag to release)
+	./scripts/release-tag.sh minor
 
-release-major: ## Bump major version, commit, tag Vx.y (push tag to release)
-	@chmod +x scripts/release-tag.sh
-	@./scripts/release-tag.sh major
+release-major: ## Tag next major release (push tag to release)
+	./scripts/release-tag.sh major
 
 doc: ## Build API docs
 	$(CARGO) doc --workspace --no-deps
