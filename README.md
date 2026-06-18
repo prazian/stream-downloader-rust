@@ -45,16 +45,27 @@ make lint
 
 ## Architecture
 
+```
+fetch page → sites/registry (SitePlugin table) → quality → optional refresh → download
+          ↘ extract/generic + profiles (fallback for simple HTML rules)
+```
+
 | Layer | Role |
 |-------|------|
-| `quality.rs` | `Best` / `All` / `Height` — shared quality selection |
-| `extract/generic.rs` + `profiles.rs` | Simple sites (HTML/CSS/JSON rules) |
-| `innertube/` | Shared YouTube-style player API client |
-| `sites/youtube.rs` | YouTube innertube client |
-| `sites/yandex/` | Yandex preview + VH player API |
-| `merge.rs` | ffmpeg mux + HLS download (`ffmpeg-sidecar`) |
+| `sites/registry.rs` | **`SITES` table** — one row per host family; drives extract + refresh |
+| `sites/plugin.rs` | `SitePlugin` type (`matches`, `extract`, optional `refresh`) |
+| `sites/common.rs` | Shared stream builders, HLS helpers, CDN refresh matching |
+| `sites/patterns/` | Reusable embed parsers (e.g. `html5player` for XNXX/XVideos) |
+| `extract/profiles.rs` | Declarative rules for trivial sites (CSS/JSON in HTML) |
+| `innertube/` | YouTube-style player API client |
 
-New complex sites: add `sites/foo.rs` and reuse `innertube` or `profiles` as fits.
+### Adding a site
+
+1. **Trivial** (static URLs in HTML): add a `SiteProfile` row in `extract/profiles.rs`.
+2. **Shared embed** (same JS player on many hosts): add a pattern under `sites/patterns/`, thin wrapper in `sites/foo.rs`.
+3. **Custom API**: implement `matches_host` + `extract` in `sites/foo.rs`, register one line in `sites/registry.rs::SITES`.
+
+No changes to `lib.rs` or `extract/engine.rs` needed. Set `refresh` only when CDN URLs expire (Pornhub, XNXX).
 
 ## YouTube
 
@@ -77,9 +88,9 @@ New complex sites: add `sites/foo.rs` and reuse `innertube` or `profiles` as fit
 ## Yandex Video
 
 ```bash
-stream-dl -u "https://yandex.ru/video/preview/18025183134392203214"
-stream-dl -u "https://yandex.ru/portal/video?stream_id=4dbb36ec4e0526d58f9f2dc8f0ecf374"
-stream-dl -u "https://frontend.vh.yandex.ru/player/vIsS3AJqE7Y4"
+stream-dl -u "https://yandex.ru/video/preview/18025183134392203214" -o ~/Downloads
+stream-dl -u "https://yandex.ru/portal/video?stream_id=4dbb36ec4e0526d58f9f2dc8f0ecf374" -o ~/Downloads
+stream-dl -u "https://frontend.vh.yandex.ru/player/vIsS3AJqE7Y4" -o ~/Downloads
 ```
 
 | URL type | What happens |
@@ -94,7 +105,7 @@ Upstream hosts from Yandex previews: OK.ru, VK, Rutube, YouTube, native Yandex V
 ## OK.ru
 
 ```bash
-stream-dl -u "https://ok.ru/video/9729432226499" -q 1080p
+stream-dl -u "https://ok.ru/video/9729432226499" -q 1080p-o ~/Downloads
 ```
 
 Embed metadata → progressive MP4 (parallel range download for large files).
@@ -104,7 +115,7 @@ Embed metadata → progressive MP4 (parallel range download for large files).
 Separate site from OK.ru:
 
 ```bash
-stream-dl -u "https://ok.xxx/video/750877/" -q 720p
+stream-dl -u "https://ok.xxx/video/750877/" -q 720p -o ~/Downloads
 ```
 
 HLS via ffmpeg; max quality depends on what the page exposes (often 720p).
@@ -112,7 +123,7 @@ HLS via ffmpeg; max quality depends on what the page exposes (often 720p).
 ## Pornhub
 
 ```bash
-stream-dl -u "https://www.pornhub.com/view_video.php?viewkey=660c3362e7ef7" -q 1080p
+stream-dl -u "https://www.pornhub.com/view_video.php?viewkey=660c3362e7ef7" -q 1080p -o ~/Downloads
 ```
 
 Parses `flashvars_*` / `mediaDefinitions`; resolves remote `get_media` for progressive MP4 (falls back to HLS).
@@ -120,7 +131,7 @@ Parses `flashvars_*` / `mediaDefinitions`; resolves remote `get_media` for progr
 ## XNXX / XVideos
 
 ```bash
-stream-dl -u "https://www.xnxx.com/video-1cpbmdea/wild_gangbang_with_wild_girl_and_construction_workers" -q 1080p
+stream-dl -u "https://www.xnxx.com/video-1cpbmdea/wild_gangbang_with_wild_girl_and_construction_workers" -q 1080p -o ~/Downloads
 ```
 
 Parses `html5player.setVideoUrl*` / `setVideoHLS`; progressive MP4 for low qualities, HLS master for 480p–1080p (via ffmpeg). Also works on `xvideos.com` and regional XNXX domains.

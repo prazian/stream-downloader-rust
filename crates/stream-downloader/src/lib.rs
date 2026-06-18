@@ -127,13 +127,7 @@ async fn refresh_stream(
     page: &FetchedPage,
     stream: Stream,
 ) -> Result<Stream> {
-    if sites::pornhub::matches_host(&page.info.url) {
-        return sites::pornhub::refresh_stream(client, page, &stream).await;
-    }
-    if sites::xnxx::matches_host(&page.info.url) {
-        return sites::xnxx::refresh_stream(client, page, &stream).await;
-    }
-    Ok(stream)
+    sites::refresh_stream(client, page, stream).await
 }
 
 /// Validate a page URL before any network I/O.

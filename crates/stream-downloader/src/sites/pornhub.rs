@@ -4,13 +4,12 @@ use crate::client;
 use crate::error::{Error, Result};
 use crate::extract::ExtractOptions;
 use crate::extract::extract_json_object;
-use crate::model::{FetchedPage, MediaKind, Stream};
+use crate::model::{FetchedPage, Stream};
 use crate::quality;
+use crate::sites::common::{self, parse_url, wants_video};
 use serde::Deserialize;
 use serde_json::Value;
 use url::Url;
-
-const USER_AGENT: &str = crate::client::BROWSER_UA;
 
 pub fn matches_host(url: &Url) -> bool {
     url.host_str().is_some_and(|host| {
@@ -34,7 +33,7 @@ pub async fn extract(
     page: &FetchedPage,
     options: &ExtractOptions,
 ) -> Result<Vec<Stream>> {
-    if !options.kinds.contains(&MediaKind::Video) {
+    if !wants_video(options) {
         return Ok(Vec::new());
     }
     let _ = view_key(&page.info.url);
@@ -58,22 +57,11 @@ pub async fn refresh_stream(
     {
         return Ok(stream.clone());
     }
-    let height = crate::quality::height_hint(stream);
     let referer = page.info.url.as_str();
     let defs = parse_media_definitions(&page.html)?;
     let defs = resolve_remote(client, defs, referer).await?;
     let streams = streams_from_definitions(&defs)?;
-    streams
-        .iter()
-        .find(|s| crate::quality::height_hint(s) == height)
-        .cloned()
-        .or_else(|| {
-            streams
-                .iter()
-                .max_by_key(|s| crate::quality::height_hint(s))
-                .cloned()
-        })
-        .ok_or(Error::NoStreamsFound)
+    common::match_refreshed(stream, &streams, false)
 }
 
 fn parse_media_definitions(html: &str) -> Result<Vec<MediaDefinition>> {
@@ -124,15 +112,7 @@ fn streams_from_definitions(defs: &[MediaDefinition]) -> Result<Vec<Stream>> {
         if height == 0 {
             continue;
         }
-        streams.push(Stream {
-            url: Url::parse(&url).map_err(|e| Error::InvalidUrl(e.to_string()))?,
-            kind: MediaKind::Video,
-            label: Some(format!("{height}p")),
-            download_user_agent: Some(USER_AGENT),
-            mux_audio: None,
-            hls: is_hls,
-            download_referer: None,
-        });
+        streams.push(common::video_stream(parse_url(&url)?, height, is_hls, None));
     }
     if streams.is_empty() {
         Err(Error::NoStreamsFound)
