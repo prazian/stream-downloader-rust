@@ -54,6 +54,18 @@ make lint
 
 **Layout:** `stream-downloader` (library), `stream-dl` (CLI). Sites register in `sites/registry.rs`; add a module + one `SitePlugin` row. Details in the source and `_docs/sites.md`.
 
+## Release
+
+Tags look like `V0.1`, `V0.2`, `V1.0`. The latest tag sets the next version (if none exists, the first release is `V0.1`).
+
+```bash
+make release-minor   # V0.1 → V0.2
+make release-major   # V0.2 → V1.0
+git push && git push origin V0.2   # use the tag printed by the command
+```
+
+Pushing a `V*.*` tag runs [`.github/workflows/release.yml`](.github/workflows/release.yml) — builds `stream-dl` and `prefetch-tools` for Linux, macOS, and Windows and publishes a GitHub release.
+
 ## License
 
 MIT — [LICENSE](LICENSE)

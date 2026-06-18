@@ -1,4 +1,4 @@
-.PHONY: help build test fmt fmt-check clippy lint check run install clean doc prefetch-tools
+.PHONY: help build test fmt fmt-check clippy lint check run install clean doc prefetch-tools release-minor release-major
 
 CARGO ?= cargo
 BIN := stream-dl
@@ -37,6 +37,14 @@ install: build ## Install binary to ~/.cargo/bin
 
 prefetch-tools: ## Download bundled ffmpeg (cached under ~/.ffmpeg-sidecar)
 	$(CARGO) run -p $(BIN) --bin prefetch-tools
+
+release-minor: ## Bump minor version, commit, tag Vx.y (push tag to release)
+	@chmod +x scripts/release-tag.sh
+	@./scripts/release-tag.sh minor
+
+release-major: ## Bump major version, commit, tag Vx.y (push tag to release)
+	@chmod +x scripts/release-tag.sh
+	@./scripts/release-tag.sh major
 
 doc: ## Build API docs
 	$(CARGO) doc --workspace --no-deps
