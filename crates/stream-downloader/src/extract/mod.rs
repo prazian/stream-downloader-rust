@@ -5,7 +5,9 @@ use std::collections::HashSet;
 use url::Url;
 
 pub use engine::PageExtractor;
-pub use profile::{HostMatch, JsonMapRule, ProfileRegistry, ProfileRule, SiteProfile};
+pub use profile::{
+    HostMatch, JsonMapRule, ProfileRegistry, ProfileRule, SiteProfile,
+};
 
 mod engine;
 mod generic;
@@ -33,11 +35,17 @@ pub trait Extractor {
     ) -> impl std::future::Future<Output = Result<Vec<Stream>>> + 'a;
 }
 
-pub(crate) fn resolve_url(base: &Url, reference: &str) -> Option<Url> {
+pub(crate) fn resolve_url(
+    base: &Url,
+    reference: &str,
+) -> Option<Url> {
     base.join(reference.trim()).ok()
 }
 
-pub(crate) fn infer_kind(url: &Url, hint: Option<MediaKind>) -> MediaKind {
+pub(crate) fn infer_kind(
+    url: &Url,
+    hint: Option<MediaKind>,
+) -> MediaKind {
     if let Some(kind) = hint {
         return kind;
     }
@@ -66,6 +74,9 @@ mod tests {
     fn resolves_relative_urls_against_page() {
         let base = Url::parse("https://cdn.example.com/watch/").unwrap();
         let resolved = resolve_url(&base, "../media/clip.mp4").unwrap();
-        assert_eq!(resolved.as_str(), "https://cdn.example.com/media/clip.mp4");
+        assert_eq!(
+            resolved.as_str(),
+            "https://cdn.example.com/media/clip.mp4"
+        );
     }
 }

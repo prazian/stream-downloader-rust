@@ -11,8 +11,12 @@ use url::Url;
 
 pub fn matches_host(url: &Url) -> bool {
     url.host_str().is_some_and(|host| {
-        let h = host.strip_prefix("www.").unwrap_or(host);
-        h.contains("xnxx") || h.ends_with("xvideos.com") || h.ends_with(".xvideos.com")
+        let h = host
+            .strip_prefix("www.")
+            .unwrap_or(host);
+        h.contains("xnxx")
+            || h.ends_with("xvideos.com")
+            || h.ends_with(".xvideos.com")
     })
 }
 
@@ -68,9 +72,12 @@ mod tests {
 
     #[test]
     fn matches_xnxx_and_xvideos_hosts() {
-        let xnxx = Url::parse("https://www.xnxx.com/video-1cpbmdea/wild_gangbang").unwrap();
+        let xnxx =
+            Url::parse("https://www.xnxx.com/video-1cpbmdea/wild_gangbang")
+                .unwrap();
         assert!(matches_host(&xnxx));
-        let xv = Url::parse("https://www.xvideos.com/video.ufkthho1234/test").unwrap();
+        let xv = Url::parse("https://www.xvideos.com/video.ufkthho1234/test")
+            .unwrap();
         assert!(matches_host(&xv));
         let other = Url::parse("https://example.com/video-1").unwrap();
         assert!(!matches_host(&other));
@@ -78,7 +85,9 @@ mod tests {
 
     #[test]
     fn detects_video_pages() {
-        let xnxx = Url::parse("https://www.xnxx.com/video-1cpbmdea/wild_gangbang").unwrap();
+        let xnxx =
+            Url::parse("https://www.xnxx.com/video-1cpbmdea/wild_gangbang")
+                .unwrap();
         assert!(is_video_page(&xnxx));
         let home = Url::parse("https://www.xnxx.com/").unwrap();
         assert!(!is_video_page(&home));

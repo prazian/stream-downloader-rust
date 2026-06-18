@@ -19,14 +19,25 @@ impl PageFetcher {
     }
 
     pub fn with_client(client: reqwest::Client) -> Self {
-        Self { client }
+        Self {
+            client,
+        }
     }
 
-    pub async fn fetch(&self, page_url: &str) -> Result<FetchedPage> {
-        let response = self.client.get(page_url).send().await?.error_for_status()?;
+    pub async fn fetch(
+        &self,
+        page_url: &str,
+    ) -> Result<FetchedPage> {
+        let response = self
+            .client
+            .get(page_url)
+            .send()
+            .await?
+            .error_for_status()?;
         let final_url = response.url().clone();
         let html = response.text().await?;
-        let title = extract_title(&html).unwrap_or_else(|| fallback_title(&final_url));
+        let title =
+            extract_title(&html).unwrap_or_else(|| fallback_title(&final_url));
         Ok(FetchedPage {
             info: PageInfo {
                 url: final_url,
@@ -43,7 +54,12 @@ fn extract_title(html: &str) -> Option<String> {
     document
         .select(&selector)
         .next()
-        .map(|node| node.text().collect::<String>().trim().to_owned())
+        .map(|node| {
+            node.text()
+                .collect::<String>()
+                .trim()
+                .to_owned()
+        })
         .filter(|t| !t.is_empty())
 }
 
@@ -60,8 +76,12 @@ mod tests {
 
     #[test]
     fn parses_title_from_html() {
-        let html = "<html><head><title>My Clip</title></head><body></body></html>";
-        assert_eq!(extract_title(html).as_deref(), Some("My Clip"));
+        let html =
+            "<html><head><title>My Clip</title></head><body></body></html>";
+        assert_eq!(
+            extract_title(html).as_deref(),
+            Some("My Clip")
+        );
     }
 
     #[test]

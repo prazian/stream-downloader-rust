@@ -16,7 +16,9 @@ pub fn matches_host(url: &Url) -> bool {
 
 pub fn video_id(url: &Url) -> Option<String> {
     let path = url.path();
-    let segment = path.strip_prefix("/video/")?.trim_end_matches('/');
+    let segment = path
+        .strip_prefix("/video/")?
+        .trim_end_matches('/');
     (!segment.is_empty()).then(|| segment.to_owned())
 }
 
@@ -26,16 +28,23 @@ pub async fn extract(
     title: &str,
     options: &ExtractOptions,
 ) -> Result<Vec<Stream>> {
-    if !options.kinds.contains(&MediaKind::Video) {
+    if !options
+        .kinds
+        .contains(&MediaKind::Video)
+    {
         return Ok(Vec::new());
     }
-    let id = video_id(url).ok_or_else(|| Error::InvalidUrl("missing Rutube video id".into()))?;
+    let id = video_id(url)
+        .ok_or_else(|| Error::InvalidUrl("missing Rutube video id".into()))?;
     let options_json = fetch_play_options(client, &id).await?;
     let streams = streams_from_options(&options_json, title)?;
     pick_quality(streams, options.quality)
 }
 
-async fn fetch_play_options(client: &reqwest::Client, id: &str) -> Result<PlayOptions> {
+async fn fetch_play_options(
+    client: &reqwest::Client,
+    id: &str,
+) -> Result<PlayOptions> {
     let url = format!("https://rutube.ru/api/play/options/{id}/?format=json");
     Ok(client
         .get(url)
@@ -47,13 +56,20 @@ async fn fetch_play_options(client: &reqwest::Client, id: &str) -> Result<PlayOp
         .await?)
 }
 
-fn streams_from_options(body: &PlayOptions, title: &str) -> Result<Vec<Stream>> {
-    let balancer = body.video_balancer.as_ref().ok_or(Error::NoStreamsFound)?;
+fn streams_from_options(
+    body: &PlayOptions,
+    title: &str,
+) -> Result<Vec<Stream>> {
+    let balancer = body
+        .video_balancer
+        .as_ref()
+        .ok_or(Error::NoStreamsFound)?;
     let mut out = Vec::new();
     for (name, url) in balancer {
         let is_hls = url.contains(".m3u8");
         out.push(Stream {
-            url: Url::parse(url).map_err(|e| Error::InvalidUrl(e.to_string()))?,
+            url: Url::parse(url)
+                .map_err(|e| Error::InvalidUrl(e.to_string()))?,
             kind: MediaKind::Video,
             label: Some(format!("{title} ({name})")),
             download_user_agent: None,
@@ -68,12 +84,15 @@ fn streams_from_options(body: &PlayOptions, title: &str) -> Result<Vec<Stream>> 
     Ok(out)
 }
 
-fn pick_quality(mut streams: Vec<Stream>, quality: Quality) -> Result<Vec<Stream>> {
+fn pick_quality(
+    mut streams: Vec<Stream>,
+    quality: Quality,
+) -> Result<Vec<Stream>> {
     streams.sort_by_key(|b| std::cmp::Reverse(height_rank(b)));
     Ok(match quality {
-        Quality::All => streams,
-        Quality::Best => vec![streams.remove(0)],
-        Quality::Height(h) => {
+        | Quality::All => streams,
+        | Quality::Best => vec![streams.remove(0)],
+        | Quality::Height(h) => {
             let picked: Vec<_> = streams
                 .into_iter()
                 .filter(|s| height_rank(s) == h)
@@ -82,7 +101,7 @@ fn pick_quality(mut streams: Vec<Stream>, quality: Quality) -> Result<Vec<Stream
                 return Err(Error::NoStreamsFound);
             }
             picked
-        }
+        },
     })
 }
 
@@ -90,7 +109,13 @@ fn height_rank(stream: &Stream) -> u32 {
     stream
         .label
         .as_deref()
-        .and_then(|l| l.rsplit('(').next()?.trim_end_matches(')').parse().ok())
+        .and_then(|l| {
+            l.rsplit('(')
+                .next()?
+                .trim_end_matches(')')
+                .parse()
+                .ok()
+        })
         .unwrap_or(0)
 }
 
@@ -106,6 +131,9 @@ mod tests {
     #[test]
     fn parses_video_id() {
         let url = Url::parse("http://rutube.ru/video/abc-def/").unwrap();
-        assert_eq!(video_id(&url).as_deref(), Some("abc-def"));
+        assert_eq!(
+            video_id(&url).as_deref(),
+            Some("abc-def")
+        );
     }
 }

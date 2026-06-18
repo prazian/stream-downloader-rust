@@ -25,15 +25,17 @@ struct CachedToken {
 }
 
 pub fn matches_host(url: &Url) -> bool {
-    url.host_str()
-        .is_some_and(|h| h == "vimeo.com" || h.ends_with(".vimeo.com") || h == "player.vimeo.com")
+    url.host_str().is_some_and(|h| {
+        h == "vimeo.com" || h.ends_with(".vimeo.com") || h == "player.vimeo.com"
+    })
 }
 
 pub fn video_id(url: &Url) -> Option<String> {
     if url.host_str() == Some("player.vimeo.com") {
         let rest = url.path().strip_prefix("/video/")?;
         let id = rest.split(&['/', '?'][..]).next()?;
-        return (!id.is_empty() && id.chars().all(|c| c.is_ascii_digit())).then(|| id.to_owned());
+        return (!id.is_empty() && id.chars().all(|c| c.is_ascii_digit()))
+            .then(|| id.to_owned());
     }
     let mut segments = url.path_segments()?;
     let id = segments.next()?;
@@ -102,7 +104,8 @@ pub async fn extract(
     }
     let id = video_id(&page.info.url)
         .ok_or_else(|| Error::InvalidUrl("missing Vimeo video id".into()))?;
-    let hash = unlisted_hash(&page.info.url).or_else(|| player_hash_from_html(&page.html));
+    let hash = unlisted_hash(&page.info.url)
+        .or_else(|| player_hash_from_html(&page.html));
     let video = fetch_video(client, &id, hash.as_deref()).await?;
     let streams = streams_from_video(&video)?;
     quality::pick_streams_prefer_progressive(streams, options.quality)
@@ -113,27 +116,39 @@ pub async fn refresh_stream(
     page: &FetchedPage,
     stream: &Stream,
 ) -> Result<Stream> {
-    if !stream.url.host_str().is_some_and(|h| h.contains("vimeo")) {
+    if !stream
+        .url
+        .host_str()
+        .is_some_and(|h| h.contains("vimeo"))
+    {
         return Ok(stream.clone());
     }
     let id = video_id(&page.info.url)
         .ok_or_else(|| Error::InvalidUrl("missing Vimeo video id".into()))?;
-    let hash = unlisted_hash(&page.info.url).or_else(|| player_hash_from_html(&page.html));
+    let hash = unlisted_hash(&page.info.url)
+        .or_else(|| player_hash_from_html(&page.html));
     let video = fetch_video(client, &id, hash.as_deref()).await?;
     let streams = streams_from_video(&video)?;
     common::match_refreshed(stream, &streams, false)
 }
 
-async fn fetch_video(client: &reqwest::Client, id: &str, hash: Option<&str>) -> Result<VimeoVideo> {
+async fn fetch_video(
+    client: &reqwest::Client,
+    id: &str,
+    hash: Option<&str>,
+) -> Result<VimeoVideo> {
     let token = oauth_token(client).await?;
     let url = match hash {
-        Some(h) => format!("https://api.vimeo.com/videos/{id}:{h}"),
-        None => format!("https://api.vimeo.com/videos/{id}"),
+        | Some(h) => format!("https://api.vimeo.com/videos/{id}:{h}"),
+        | None => format!("https://api.vimeo.com/videos/{id}"),
     };
     client
         .get(url)
         .query(&[("fields", VIDEO_FIELDS)])
-        .header("Authorization", format!("Bearer {token}"))
+        .header(
+            "Authorization",
+            format!("Bearer {token}"),
+        )
         .header("User-Agent", MACOS_UA)
         .header("Accept", API_ACCEPT)
         .send()
@@ -150,7 +165,10 @@ async fn oauth_token(client: &reqwest::Client) -> Result<String> {
     }
     let response: OAuthResponse = client
         .post("https://api.vimeo.com/oauth/authorize/client")
-        .header("Authorization", format!("Basic {MACOS_AUTH}"))
+        .header(
+            "Authorization",
+            format!("Basic {MACOS_AUTH}"),
+        )
         .header("User-Agent", MACOS_UA)
         .header("Accept", API_ACCEPT)
         .form(&[
@@ -181,7 +199,8 @@ fn store_token(response: &OAuthResponse) {
     let mut guard = lock.lock().expect("vimeo token mutex");
     *guard = Some(CachedToken {
         value: response.access_token.clone(),
-        expires_at: Instant::now() + Duration::from_secs(response.expires_in.saturating_sub(60)),
+        expires_at: Instant::now()
+            + Duration::from_secs(response.expires_in.saturating_sub(60)),
     });
 }
 
@@ -212,12 +231,18 @@ fn streams_from_video(video: &VimeoVideo) -> Result<Vec<Stream>> {
 }
 
 fn stream_from_file(file: &VimeoFile) -> Option<Result<Stream>> {
-    let link = file.link.as_deref().filter(|u| !u.is_empty())?;
+    let link = file
+        .link
+        .as_deref()
+        .filter(|u| !u.is_empty())?;
     if file.quality.as_deref() == Some("hls") && !link.contains(".m3u8") {
         return None;
     }
     let hls = link.contains(".m3u8");
-    if !hls && file.kind.as_deref() != Some("video/mp4") && file.rendition.is_none() {
+    if !hls
+        && file.kind.as_deref() != Some("video/mp4")
+        && file.rendition.is_none()
+    {
         return None;
     }
     let height = file
@@ -227,11 +252,17 @@ fn stream_from_file(file: &VimeoFile) -> Option<Result<Stream>> {
     if height == 0 {
         return None;
     }
-    Some(parse_url(link).map(|url| video_stream(url, height, hls, Some(REFERER))))
+    Some(
+        parse_url(link)
+            .map(|url| video_stream(url, height, hls, Some(REFERER))),
+    )
 }
 
 fn rendition_height(rendition: &str) -> Option<u32> {
-    rendition.trim_end_matches('p').parse().ok()
+    rendition
+        .trim_end_matches('p')
+        .parse()
+        .ok()
 }
 
 #[derive(Debug, Deserialize)]
@@ -274,32 +305,54 @@ mod tests {
     fn matches_vimeo_hosts() {
         let url = Url::parse("https://vimeo.com/1181852916").unwrap();
         assert!(matches_host(&url));
-        let url = Url::parse("https://player.vimeo.com/video/1181852916?h=abc").unwrap();
+        let url = Url::parse("https://player.vimeo.com/video/1181852916?h=abc")
+            .unwrap();
         assert!(matches_host(&url));
     }
 
     #[test]
     fn parses_video_id_and_hash() {
         let url = Url::parse("https://vimeo.com/1181852916?fl=wc").unwrap();
-        assert_eq!(video_id(&url).as_deref(), Some("1181852916"));
+        assert_eq!(
+            video_id(&url).as_deref(),
+            Some("1181852916")
+        );
         assert_eq!(unlisted_hash(&url), None);
-        let url = Url::parse("https://vimeo.com/1181852916/edbe0f686b").unwrap();
-        assert_eq!(unlisted_hash(&url).as_deref(), Some("edbe0f686b"));
-        let url = Url::parse("https://player.vimeo.com/video/1181852916?h=edbe0f686b").unwrap();
-        assert_eq!(video_id(&url).as_deref(), Some("1181852916"));
-        assert_eq!(unlisted_hash(&url).as_deref(), Some("edbe0f686b"));
+        let url =
+            Url::parse("https://vimeo.com/1181852916/edbe0f686b").unwrap();
+        assert_eq!(
+            unlisted_hash(&url).as_deref(),
+            Some("edbe0f686b")
+        );
+        let url = Url::parse(
+            "https://player.vimeo.com/video/1181852916?h=edbe0f686b",
+        )
+        .unwrap();
+        assert_eq!(
+            video_id(&url).as_deref(),
+            Some("1181852916")
+        );
+        assert_eq!(
+            unlisted_hash(&url).as_deref(),
+            Some("edbe0f686b")
+        );
     }
 
     #[test]
     fn parses_player_hash_from_meta() {
         let html = r#"<meta property="og:video:secure_url" content="https://player.vimeo.com/video/1181852916?h=edbe0f686b">"#;
-        assert_eq!(player_hash_from_html(html).as_deref(), Some("edbe0f686b"));
+        assert_eq!(
+            player_hash_from_html(html).as_deref(),
+            Some("edbe0f686b")
+        );
     }
 
     #[test]
     fn builds_streams_from_fixture() {
-        let video: VimeoVideo =
-            serde_json::from_str(include_str!("../../tests/fixtures/vimeo_files.json")).unwrap();
+        let video: VimeoVideo = serde_json::from_str(include_str!(
+            "../../tests/fixtures/vimeo_files.json"
+        ))
+        .unwrap();
         let streams = streams_from_video(&video).unwrap();
         assert_eq!(streams.len(), 2);
         assert!(streams.iter().all(|s| !s.hls));

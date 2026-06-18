@@ -20,11 +20,16 @@ pub fn matches_host(url: &Url) -> bool {
     if !is_yandex_host(host) {
         return false;
     }
-    url.path().contains("/video/preview") || url.query().is_some_and(|q| q.contains("stream_id="))
+    url.path().contains("/video/preview")
+        || url
+            .query()
+            .is_some_and(|q| q.contains("stream_id="))
 }
 
 fn is_yandex_host(host: &str) -> bool {
-    let h = host.strip_prefix("www.").unwrap_or(host);
+    let h = host
+        .strip_prefix("www.")
+        .unwrap_or(host);
     h.starts_with("yandex.") || h.ends_with(".yandex.ru")
 }
 
@@ -35,16 +40,31 @@ pub async fn extract(
 ) -> Result<Vec<Stream>> {
     if is_preview(&page.info.url) {
         let source = preview::resolve(page)?;
-        return registry::extract_upstream(client, &source.url, &source.title, options).await;
+        return registry::extract_upstream(
+            client,
+            &source.url,
+            &source.title,
+            options,
+        )
+        .await;
     }
     if let Some(id) = content_id(&page.info.url) {
-        return vh::extract(client, &id, Some(&page.info.title), options).await;
+        return vh::extract(
+            client,
+            &id,
+            Some(&page.info.title),
+            options,
+        )
+        .await;
     }
     Ok(Vec::new())
 }
 
 fn is_preview(url: &Url) -> bool {
-    url.path().contains("/video/preview") || url.query().is_some_and(|q| q.contains("filmId="))
+    url.path().contains("/video/preview")
+        || url
+            .query()
+            .is_some_and(|q| q.contains("filmId="))
 }
 
 pub async fn extract_vh(

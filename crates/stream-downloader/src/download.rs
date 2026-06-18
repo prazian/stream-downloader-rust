@@ -46,7 +46,9 @@ impl Downloader {
     }
 
     pub fn with_client(client: reqwest::Client) -> Self {
-        Self { client }
+        Self {
+            client,
+        }
     }
 
     pub async fn download(
@@ -60,12 +62,20 @@ impl Downloader {
 
         if let Some(audio) = &stream.mux_audio {
             return self
-                .download_muxed(stream, audio, &path, options, &name.file_name)
+                .download_muxed(
+                    stream,
+                    audio,
+                    &path,
+                    options,
+                    &name.file_name,
+                )
                 .await;
         }
 
         if stream.hls {
-            return self.download_hls(stream, &path, options).await;
+            return self
+                .download_hls(stream, &path, options)
+                .await;
         }
 
         self.download_to_path(stream, &path, options, &name.file_name)
@@ -81,15 +91,25 @@ impl Downloader {
         options: &DownloadOptions<'_>,
         label: &str,
     ) -> Result<PathBuf> {
-        let stem = output.file_stem().and_then(|s| s.to_str()).unwrap_or("out");
-        let dir = output.parent().unwrap_or_else(|| Path::new("."));
+        let stem = output
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("out");
+        let dir = output
+            .parent()
+            .unwrap_or_else(|| Path::new("."));
         let video_part = dir.join(format!(".{stem}-video.part"));
         let audio_part = dir.join(format!(".{stem}-audio.part"));
 
         let video_label = format!("{label} (video)");
         let audio_label = format!("{label} (audio)");
-        self.download_to_path(video, &video_part, options, &video_label)
-            .await?;
+        self.download_to_path(
+            video,
+            &video_part,
+            options,
+            &video_label,
+        )
+        .await?;
         self.download_to_path(
             &Stream {
                 url: audio.url.clone(),
@@ -147,9 +167,11 @@ impl Downloader {
             .map(str::to_owned);
         let output = path.to_path_buf();
         let out = output.clone();
-        tokio::task::spawn_blocking(move || merge::download_hls(&url, &out, referer.as_deref()))
-            .await
-            .map_err(|e| crate::error::Error::Merge(e.to_string()))??;
+        tokio::task::spawn_blocking(move || {
+            merge::download_hls(&url, &out, referer.as_deref())
+        })
+        .await
+        .map_err(|e| crate::error::Error::Merge(e.to_string()))??;
         Ok(output)
     }
 
@@ -163,14 +185,20 @@ impl Downloader {
         let (total, ranges) = self.probe(stream, options).await?;
         if ranges && total.is_some_and(|t| t >= MIN_PARALLEL_BYTES) {
             match self
-                .download_parallel(stream, path, options, label, total.unwrap())
+                .download_parallel(
+                    stream,
+                    path,
+                    options,
+                    label,
+                    total.unwrap(),
+                )
                 .await
             {
-                Ok(()) => return Ok(()),
-                Err(e) if retriable_http(&e) => {
+                | Ok(()) => return Ok(()),
+                | Err(e) if retriable_http(&e) => {
                     let _ = remove_parallel_parts(path);
-                }
-                Err(e) => return Err(e),
+                },
+                | Err(e) => return Err(e),
             }
         }
 
@@ -186,20 +214,42 @@ impl Downloader {
         label: &str,
         total_hint: Option<u64>,
     ) -> Result<()> {
-        let mut response = send_with_retry(self.build_request(stream, options), None).await?;
+        let mut response = send_with_retry(
+            self.build_request(stream, options),
+            None,
+        )
+        .await?;
         let total = total_hint.or_else(|| response.content_length());
         let mut downloaded = 0u64;
         let mut last_pct = None::<u32>;
-        report(options, label, downloaded, total, &mut last_pct);
+        report(
+            options,
+            label,
+            downloaded,
+            total,
+            &mut last_pct,
+        );
 
         let mut file = tokio::fs::File::create(path).await?;
         while let Some(chunk) = response.chunk().await? {
             file.write_all(&chunk).await?;
             downloaded += chunk.len() as u64;
-            report(options, label, downloaded, total, &mut last_pct);
+            report(
+                options,
+                label,
+                downloaded,
+                total,
+                &mut last_pct,
+            );
         }
         file.flush().await?;
-        report(options, label, downloaded, total, &mut last_pct);
+        report(
+            options,
+            label,
+            downloaded,
+            total,
+            &mut last_pct,
+        );
         Ok(())
     }
 
@@ -214,11 +264,16 @@ impl Downloader {
             None,
         )
         .await?;
-        let total = content_range_total(response.headers()).or_else(|| response.content_length());
+        let total = content_range_total(response.headers())
+            .or_else(|| response.content_length());
         let ranges = response
             .headers()
             .get(reqwest::header::ACCEPT_RANGES)
-            .or_else(|| response.headers().get(reqwest::header::CONTENT_RANGE))
+            .or_else(|| {
+                response
+                    .headers()
+                    .get(reqwest::header::CONTENT_RANGE)
+            })
             .is_some();
         Ok((total, ranges))
     }
@@ -229,7 +284,9 @@ impl Downloader {
         options: &DownloadOptions<'_>,
     ) -> reqwest::RequestBuilder {
         let mut request = self.client.get(stream.url.clone());
-        let referer = stream.download_referer.or(options.referer);
+        let referer = stream
+            .download_referer
+            .or(options.referer);
         if let Some(referer) = referer {
             request = request.header(reqwest::header::REFERER, referer);
         }
@@ -249,7 +306,9 @@ impl Downloader {
     ) -> Result<()> {
         let chunks = parallel_chunks(total, &stream.url);
         let chunk_size = total.div_ceil(chunks as u64);
-        let parent = path.parent().unwrap_or_else(|| Path::new("."));
+        let parent = path
+            .parent()
+            .unwrap_or_else(|| Path::new("."));
         let stem = path
             .file_name()
             .and_then(|s| s.to_str())
@@ -259,9 +318,16 @@ impl Downloader {
         let downloaded = Arc::new(AtomicU64::new(0));
         let mut last_pct = None::<u32>;
         let mut interval = tokio::time::interval(PROGRESS_INTERVAL);
-        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+        interval
+            .set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
-        report(options, label, 0, Some(total), &mut last_pct);
+        report(
+            options,
+            label,
+            0,
+            Some(total),
+            &mut last_pct,
+        );
 
         for i in 0..chunks {
             let start = i as u64 * chunk_size;
@@ -278,7 +344,9 @@ impl Downloader {
                 .download_referer
                 .or(options.referer)
                 .map(str::to_owned);
-            let ua = stream.download_user_agent.map(str::to_owned);
+            let ua = stream
+                .download_user_agent
+                .map(str::to_owned);
             let counter = Arc::clone(&downloaded);
             set.spawn(async move {
                 let range = format!("bytes={start}-{end}");
@@ -339,20 +407,31 @@ impl Downloader {
             let _ = tokio::fs::remove_file(part).await;
         }
         out.flush().await?;
-        report(options, label, total, Some(total), &mut last_pct);
+        report(
+            options,
+            label,
+            total,
+            Some(total),
+            &mut last_pct,
+        );
         Ok(())
     }
 }
 
-fn parallel_chunks(total: u64, url: &url::Url) -> usize {
+fn parallel_chunks(
+    total: u64,
+    url: &url::Url,
+) -> usize {
     let mut chunks = match total {
-        n if n < 20 * 1024 * 1024 => 2,
-        n if n < 100 * 1024 * 1024 => 4,
-        n if n < 512 * 1024 * 1024 => 8,
-        _ => 16,
+        | n if n < 20 * 1024 * 1024 => 2,
+        | n if n < 100 * 1024 * 1024 => 4,
+        | n if n < 512 * 1024 * 1024 => 8,
+        | _ => 16,
     };
     let by_chunk_size = (total / MIN_CHUNK_BYTES) as usize;
-    chunks = chunks.min(by_chunk_size).clamp(1, MAX_PARALLEL_CHUNKS);
+    chunks = chunks
+        .min(by_chunk_size)
+        .clamp(1, MAX_PARALLEL_CHUNKS);
     if url
         .host_str()
         .is_some_and(|h| h.contains("phncdn.com") || h.contains("xnxx-cdn.com"))
@@ -372,32 +451,40 @@ async fn send_with_retry(
     let mut delay = Duration::from_millis(400);
     let mut last = None;
     for attempt in 0..RETRY_ATTEMPTS {
-        let mut req = builder
-            .try_clone()
-            .ok_or_else(|| crate::error::Error::Merge("failed to clone HTTP request".into()))?;
+        let mut req = builder.try_clone().ok_or_else(|| {
+            crate::error::Error::Merge("failed to clone HTTP request".into())
+        })?;
         if let Some(range) = &range {
             req = req.header(reqwest::header::RANGE, range);
         }
         match req.send().await {
-            Ok(response) => {
+            | Ok(response) => {
                 let status = response.status();
-                if RETRYABLE_STATUS.contains(&status.as_u16()) && attempt + 1 < RETRY_ATTEMPTS {
+                if RETRYABLE_STATUS.contains(&status.as_u16())
+                    && attempt + 1 < RETRY_ATTEMPTS
+                {
                     tokio::time::sleep(delay).await;
                     delay *= 2;
                     continue;
                 }
-                return response.error_for_status().map_err(Into::into);
-            }
-            Err(e) if (e.is_timeout() || e.is_connect()) && attempt + 1 < RETRY_ATTEMPTS => {
+                return response
+                    .error_for_status()
+                    .map_err(Into::into);
+            },
+            | Err(e)
+                if (e.is_timeout() || e.is_connect())
+                    && attempt + 1 < RETRY_ATTEMPTS =>
+            {
                 last = Some(crate::error::Error::Http(e));
                 tokio::time::sleep(delay).await;
                 delay *= 2;
-            }
-            Err(e) => return Err(e.into()),
+            },
+            | Err(e) => return Err(e.into()),
         }
     }
-    Err(last
-        .unwrap_or_else(|| crate::error::Error::Merge("HTTP request failed after retries".into())))
+    Err(last.unwrap_or_else(|| {
+        crate::error::Error::Merge("HTTP request failed after retries".into())
+    }))
 }
 
 fn retriable_http(err: &crate::error::Error) -> bool {
@@ -413,7 +500,10 @@ fn remove_parallel_parts(path: &Path) -> std::io::Result<()> {
     let Some(parent) = path.parent() else {
         return Ok(());
     };
-    let Some(stem) = path.file_name().and_then(|s| s.to_str()) else {
+    let Some(stem) = path
+        .file_name()
+        .and_then(|s| s.to_str())
+    else {
         return Ok(());
     };
     for entry in std::fs::read_dir(parent)? {
@@ -428,7 +518,10 @@ fn remove_parallel_parts(path: &Path) -> std::io::Result<()> {
 }
 
 fn content_range_total(headers: &reqwest::header::HeaderMap) -> Option<u64> {
-    let value = headers.get(reqwest::header::CONTENT_RANGE)?.to_str().ok()?;
+    let value = headers
+        .get(reqwest::header::CONTENT_RANGE)?
+        .to_str()
+        .ok()?;
     let total = value.split('/').nth(1)?;
     total.parse().ok()
 }
@@ -444,20 +537,20 @@ fn report(
         return;
     };
     match total.filter(|&t| t > 0) {
-        Some(t) => {
+        | Some(t) => {
             let pct = (downloaded.saturating_mul(100) / t).min(100) as u32;
             if downloaded < t && Some(pct) == *last_pct {
                 return;
             }
             *last_pct = Some(pct);
-        }
-        None => {
+        },
+        | None => {
             let bucket = (downloaded / (512 * 1024)) as u32;
             if downloaded > 0 && Some(bucket) == *last_pct {
                 return;
             }
             *last_pct = Some(bucket);
-        }
+        },
     }
     cb(DownloadProgress {
         label,
@@ -470,11 +563,19 @@ fn unique_path(path: PathBuf) -> PathBuf {
     if !path.exists() {
         return path;
     }
-    let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
+    let Some(stem) = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+    else {
         return path;
     };
-    let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
-    let parent = path.parent().unwrap_or_else(|| Path::new("."));
+    let ext = path
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("");
+    let parent = path
+        .parent()
+        .unwrap_or_else(|| Path::new("."));
 
     for index in 1..=999 {
         let candidate = if ext.is_empty() {
@@ -497,12 +598,30 @@ mod tests {
     fn adaptive_parallel_chunks() {
         let ph = url::Url::parse("https://ev.phncdn.com/v.mp4").unwrap();
         let cdn = url::Url::parse("https://cdn.example.com/v.mp4").unwrap();
-        assert_eq!(parallel_chunks(5 * 1024 * 1024, &cdn), 1);
-        assert_eq!(parallel_chunks(20 * 1024 * 1024, &cdn), 2);
-        assert_eq!(parallel_chunks(50 * 1024 * 1024, &cdn), 4);
-        assert_eq!(parallel_chunks(200 * 1024 * 1024, &cdn), 8);
-        assert_eq!(parallel_chunks(2 * 1024 * 1024 * 1024, &cdn), 16);
-        assert_eq!(parallel_chunks(2 * 1024 * 1024 * 1024, &ph), 4);
+        assert_eq!(
+            parallel_chunks(5 * 1024 * 1024, &cdn),
+            1
+        );
+        assert_eq!(
+            parallel_chunks(20 * 1024 * 1024, &cdn),
+            2
+        );
+        assert_eq!(
+            parallel_chunks(50 * 1024 * 1024, &cdn),
+            4
+        );
+        assert_eq!(
+            parallel_chunks(200 * 1024 * 1024, &cdn),
+            8
+        );
+        assert_eq!(
+            parallel_chunks(2 * 1024 * 1024 * 1024, &cdn),
+            16
+        );
+        assert_eq!(
+            parallel_chunks(2 * 1024 * 1024 * 1024, &ph),
+            4
+        );
     }
 
     #[test]

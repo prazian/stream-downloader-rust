@@ -25,24 +25,42 @@ impl Quality {
         let height = s
             .trim_end_matches(['p', 'P'])
             .parse()
-            .map_err(|_| crate::error::Error::InvalidUrl(format!("bad quality `{raw}`")))?;
+            .map_err(|_| {
+                crate::error::Error::InvalidUrl(format!("bad quality `{raw}`"))
+            })?;
         Ok(Self::Height(height))
     }
 
-    pub fn pick<'a>(&self, heights: impl IntoIterator<Item = &'a u32>) -> Vec<u32> {
+    pub fn pick<'a>(
+        &self,
+        heights: impl IntoIterator<Item = &'a u32>,
+    ) -> Vec<u32> {
         let heights: Vec<u32> = heights.into_iter().copied().collect();
         match self {
-            Self::All => heights,
-            Self::Best => heights.into_iter().max().into_iter().collect(),
-            Self::Height(h) => heights.into_iter().filter(|x| x == h).collect(),
+            | Self::All => heights,
+            | Self::Best => heights
+                .into_iter()
+                .max()
+                .into_iter()
+                .collect(),
+            | Self::Height(h) => heights
+                .into_iter()
+                .filter(|x| x == h)
+                .collect(),
         }
     }
 
-    pub fn filter_streams(&self, streams: Vec<Stream>) -> Vec<Stream> {
+    pub fn filter_streams(
+        &self,
+        streams: Vec<Stream>,
+    ) -> Vec<Stream> {
         if matches!(self, Self::All) {
             return streams;
         }
-        let heights: Vec<u32> = streams.iter().map(height_hint).collect();
+        let heights: Vec<u32> = streams
+            .iter()
+            .map(height_hint)
+            .collect();
         let pick = self.pick(heights.iter());
         streams
             .into_iter()
@@ -60,8 +78,13 @@ pub fn height_hint(stream: &Stream) -> u32 {
 }
 
 /// Pick by height (highest first), falling back to the next lower resolution.
-pub fn pick_streams(streams: Vec<Stream>, quality: Quality) -> crate::error::Result<Vec<Stream>> {
-    pick_sorted(streams, quality, |a, b| height_hint(b).cmp(&height_hint(a)))
+pub fn pick_streams(
+    streams: Vec<Stream>,
+    quality: Quality,
+) -> crate::error::Result<Vec<Stream>> {
+    pick_sorted(streams, quality, |a, b| {
+        height_hint(b).cmp(&height_hint(a))
+    })
 }
 
 /// Like [`pick_streams`], but prefers progressive files over HLS at the same height (VK).
@@ -69,10 +92,12 @@ pub fn pick_streams_prefer_progressive(
     streams: Vec<Stream>,
     quality: Quality,
 ) -> crate::error::Result<Vec<Stream>> {
-    pick_sorted(streams, quality, |a, b| match (a.hls, b.hls) {
-        (true, false) => Ordering::Greater,
-        (false, true) => Ordering::Less,
-        _ => height_hint(b).cmp(&height_hint(a)),
+    pick_sorted(streams, quality, |a, b| {
+        match (a.hls, b.hls) {
+            | (true, false) => Ordering::Greater,
+            | (false, true) => Ordering::Less,
+            | _ => height_hint(b).cmp(&height_hint(a)),
+        }
     })
 }
 
@@ -86,10 +111,13 @@ fn pick_sorted(
     }
     streams.sort_by(compare);
     let picked = match quality {
-        Quality::All => streams,
-        Quality::Best => vec![streams.remove(0)],
-        Quality::Height(want) => {
-            if let Some(stream) = streams.iter().find(|s| height_hint(s) == want) {
+        | Quality::All => streams,
+        | Quality::Best => vec![streams.remove(0)],
+        | Quality::Height(want) => {
+            if let Some(stream) = streams
+                .iter()
+                .find(|s| height_hint(s) == want)
+            {
                 vec![stream.clone()]
             } else {
                 streams
@@ -98,7 +126,7 @@ fn pick_sorted(
                     .take(1)
                     .collect()
             }
-        }
+        },
     };
     if picked.is_empty() {
         Err(crate::error::Error::NoStreamsFound)
@@ -113,16 +141,31 @@ mod tests {
 
     #[test]
     fn parses_common_labels() {
-        assert_eq!(Quality::parse("1080p").unwrap(), Quality::Height(1080));
-        assert_eq!(Quality::parse("4k").unwrap(), Quality::Height(2160));
-        assert_eq!(Quality::parse("all").unwrap(), Quality::All);
+        assert_eq!(
+            Quality::parse("1080p").unwrap(),
+            Quality::Height(1080)
+        );
+        assert_eq!(
+            Quality::parse("4k").unwrap(),
+            Quality::Height(2160)
+        );
+        assert_eq!(
+            Quality::parse("all").unwrap(),
+            Quality::All
+        );
     }
 
     #[test]
     fn picks_heights() {
         let hs = [144u32, 360, 720, 1080];
-        assert_eq!(Quality::Best.pick(hs.iter()), vec![1080]);
-        assert_eq!(Quality::Height(720).pick(hs.iter()), vec![720]);
+        assert_eq!(
+            Quality::Best.pick(hs.iter()),
+            vec![1080]
+        );
+        assert_eq!(
+            Quality::Height(720).pick(hs.iter()),
+            vec![720]
+        );
         assert_eq!(Quality::All.pick(hs.iter()).len(), 4);
     }
 
@@ -147,7 +190,8 @@ mod tests {
                 ..stream(720)
             },
         ];
-        let picked = pick_streams_prefer_progressive(streams, Quality::Best).unwrap();
+        let picked =
+            pick_streams_prefer_progressive(streams, Quality::Best).unwrap();
         assert!(!picked[0].hls);
     }
 

@@ -5,26 +5,53 @@ use crate::extract::ExtractOptions;
 use crate::model::{FetchedPage, PageInfo, Stream};
 use crate::sites::plugin::SitePlugin;
 use crate::sites::yandex::content_id;
-use crate::sites::{ok, okxxx, pornhub, rutube, vimeo, vk, xnxx, yandex, youtube};
+use crate::sites::{
+    ok, okxxx, pornhub, rutube, vimeo, vk, xnxx, yandex, youtube,
+};
 use std::future::Future;
 use std::pin::Pin;
 use url::Url;
 
 /// Order matters: first match wins (aggregators before upstream hosts they delegate to).
 pub static SITES: &[SitePlugin] = &[
-    SitePlugin::new("youtube", youtube::matches_host, extract_youtube, None),
-    SitePlugin::new("yandex", yandex::matches_host, extract_yandex, None),
+    SitePlugin::new(
+        "youtube",
+        youtube::matches_host,
+        extract_youtube,
+        None,
+    ),
+    SitePlugin::new(
+        "yandex",
+        yandex::matches_host,
+        extract_yandex,
+        None,
+    ),
     SitePlugin::new("vk", vk::matches_host, extract_vk, None),
-    SitePlugin::new("rutube", rutube::matches_host, extract_rutube, None),
+    SitePlugin::new(
+        "rutube",
+        rutube::matches_host,
+        extract_rutube,
+        None,
+    ),
     SitePlugin::new("ok", ok::matches_host, extract_ok, None),
-    SitePlugin::new("okxxx", okxxx::matches_host, extract_okxxx, None),
+    SitePlugin::new(
+        "okxxx",
+        okxxx::matches_host,
+        extract_okxxx,
+        None,
+    ),
     SitePlugin::new(
         "pornhub",
         pornhub::matches_host,
         extract_pornhub,
         Some(refresh_pornhub),
     ),
-    SitePlugin::new("xnxx", xnxx::matches_host, extract_xnxx, Some(refresh_xnxx)),
+    SitePlugin::new(
+        "xnxx",
+        xnxx::matches_host,
+        extract_xnxx,
+        Some(refresh_xnxx),
+    ),
     SitePlugin::new(
         "vimeo",
         vimeo::matches_host,
@@ -101,8 +128,16 @@ async fn extract_first_match(
     Ok(Vec::new())
 }
 
-async fn fetch_page(client: &reqwest::Client, url: Url, title: &str) -> Result<FetchedPage> {
-    let response = client.get(url.clone()).send().await?.error_for_status()?;
+async fn fetch_page(
+    client: &reqwest::Client,
+    url: Url,
+    title: &str,
+) -> Result<FetchedPage> {
+    let response = client
+        .get(url.clone())
+        .send()
+        .await?
+        .error_for_status()?;
     let final_url = response.url().clone();
     let html = response.text().await?;
     Ok(FetchedPage {
@@ -198,7 +233,9 @@ fn refresh_pornhub<'a>(
     page: &'a FetchedPage,
     stream: &'a Stream,
 ) -> Pin<Box<dyn Future<Output = Result<Stream>> + Send + 'a>> {
-    Box::pin(pornhub::refresh_stream(client, page, stream))
+    Box::pin(pornhub::refresh_stream(
+        client, page, stream,
+    ))
 }
 
 fn refresh_xnxx<'a>(
@@ -206,7 +243,9 @@ fn refresh_xnxx<'a>(
     page: &'a FetchedPage,
     stream: &'a Stream,
 ) -> Pin<Box<dyn Future<Output = Result<Stream>> + Send + 'a>> {
-    Box::pin(xnxx::refresh_stream(client, page, stream))
+    Box::pin(xnxx::refresh_stream(
+        client, page, stream,
+    ))
 }
 
 fn extract_vimeo<'a>(
@@ -222,7 +261,9 @@ fn refresh_vimeo<'a>(
     page: &'a FetchedPage,
     stream: &'a Stream,
 ) -> Pin<Box<dyn Future<Output = Result<Stream>> + Send + 'a>> {
-    Box::pin(vimeo::refresh_stream(client, page, stream))
+    Box::pin(vimeo::refresh_stream(
+        client, page, stream,
+    ))
 }
 
 #[cfg(test)]
@@ -232,12 +273,22 @@ mod tests {
 
     #[test]
     fn sites_registry_is_well_formed() {
-        assert!(!SITES.is_empty(), "SITES must contain at least one plugin");
+        assert!(
+            !SITES.is_empty(),
+            "SITES must contain at least one plugin"
+        );
 
         let mut ids = HashSet::new();
         for site in SITES {
-            assert!(!site.id.is_empty(), "site id must not be empty");
-            assert!(ids.insert(site.id), "duplicate site id: {}", site.id);
+            assert!(
+                !site.id.is_empty(),
+                "site id must not be empty"
+            );
+            assert!(
+                ids.insert(site.id),
+                "duplicate site id: {}",
+                site.id
+            );
             assert!(
                 site.matches as usize != 0,
                 "site '{}' has null matches",
