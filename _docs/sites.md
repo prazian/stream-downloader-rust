@@ -20,6 +20,10 @@ Not OK.ru — KTPlayer pages expose HLS via a `<source>` gate URL. Max quality d
 
 Shared `html5player` embed: low qualities as progressive MP4, 480p–1080p via HLS master (ffmpeg). Works on `xvideos.com` and regional XNXX domains. Page is re-fetched before download for fresh signed CDN URLs.
 
+## Vimeo
+
+Vimeo’s public player config is often blocked; uses the macOS app API (`api.vimeo.com`) for progressive MP4. Redirect links expire — refreshed before download. Unlisted/private embeds may need the `h` hash from the page URL or `og:video` meta.
+
 ## Examples
 
 ```bash
@@ -39,4 +43,7 @@ stream-dl -u "https://www.pornhub.com/view_video.php?viewkey=660c3362e7ef7" -q 1
 
 # XN / XVid
 stream-dl -u "https://www.xnxx.com/video-1cpbmdea/wild_gangbang_with_wild_girl_and_construction_workers" -q 1080p -o ~/Downloads
+
+# Vimeo
+stream-dl -u "https://vimeo.com/1181852916?fl=wc" -q 1080p -o ~/Downloads
 ```

@@ -5,7 +5,7 @@ use crate::extract::ExtractOptions;
 use crate::model::{FetchedPage, PageInfo, Stream};
 use crate::sites::plugin::SitePlugin;
 use crate::sites::yandex::content_id;
-use crate::sites::{ok, okxxx, pornhub, rutube, vk, xnxx, yandex, youtube};
+use crate::sites::{ok, okxxx, pornhub, rutube, vimeo, vk, xnxx, yandex, youtube};
 use std::future::Future;
 use std::pin::Pin;
 use url::Url;
@@ -25,6 +25,12 @@ pub static SITES: &[SitePlugin] = &[
         Some(refresh_pornhub),
     ),
     SitePlugin::new("xnxx", xnxx::matches_host, extract_xnxx, Some(refresh_xnxx)),
+    SitePlugin::new(
+        "vimeo",
+        vimeo::matches_host,
+        extract_vimeo,
+        Some(refresh_vimeo),
+    ),
 ];
 
 pub async fn extract_for_host(
@@ -201,6 +207,22 @@ fn refresh_xnxx<'a>(
     stream: &'a Stream,
 ) -> Pin<Box<dyn Future<Output = Result<Stream>> + Send + 'a>> {
     Box::pin(xnxx::refresh_stream(client, page, stream))
+}
+
+fn extract_vimeo<'a>(
+    client: &'a reqwest::Client,
+    page: &'a FetchedPage,
+    options: &'a ExtractOptions,
+) -> Pin<Box<dyn Future<Output = Result<Vec<Stream>>> + Send + 'a>> {
+    Box::pin(vimeo::extract(client, page, options))
+}
+
+fn refresh_vimeo<'a>(
+    client: &'a reqwest::Client,
+    page: &'a FetchedPage,
+    stream: &'a Stream,
+) -> Pin<Box<dyn Future<Output = Result<Stream>> + Send + 'a>> {
+    Box::pin(vimeo::refresh_stream(client, page, stream))
 }
 
 #[cfg(test)]

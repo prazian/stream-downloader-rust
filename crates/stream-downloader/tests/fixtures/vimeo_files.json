@@ -1,0 +1,25 @@
+{
+  "files": [
+    {
+      "quality": "hd",
+      "rendition": "1080p",
+      "type": "video/mp4",
+      "width": 1920,
+      "height": 1080,
+      "link": "https://player.vimeo.com/progressive_redirect/playback/1/container/a/file.mp4?sig=abc"
+    },
+    {
+      "quality": "hd",
+      "rendition": "720p",
+      "type": "video/mp4",
+      "width": 1280,
+      "height": 720,
+      "link": "https://player.vimeo.com/progressive_redirect/playback/1/container/b/file.mp4?sig=def"
+    },
+    {
+      "quality": "hls",
+      "type": "video/mp4",
+      "link": "https://player.vimeo.com/external/1.m3u8"
+    }
+  ]
+}

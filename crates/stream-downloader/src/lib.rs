@@ -233,6 +233,23 @@ mod tests {
 
     #[tokio::test]
     #[ignore = "network"]
+    async fn live_vimeo_discover() {
+        let session = Session::new();
+        let streams = session
+            .discover(
+                "https://vimeo.com/1181852916?fl=wc",
+                &[MediaKind::Video],
+                Quality::Height(1080),
+            )
+            .await
+            .expect("discover");
+        assert!(!streams.is_empty());
+        assert!(!streams[0].hls);
+        assert_eq!(crate::quality::height_hint(&streams[0]), 1080);
+    }
+
+    #[tokio::test]
+    #[ignore = "network"]
     async fn live_okxxx_discover() {
         let session = Session::new();
         let streams = session

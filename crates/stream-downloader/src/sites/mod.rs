@@ -8,6 +8,7 @@ pub mod plugin;
 pub mod pornhub;
 pub mod registry;
 pub mod rutube;
+pub mod vimeo;
 pub mod vk;
 pub mod xnxx;
 pub mod yandex;
