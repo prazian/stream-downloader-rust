@@ -202,3 +202,30 @@ fn refresh_xnxx<'a>(
 ) -> Pin<Box<dyn Future<Output = Result<Stream>> + Send + 'a>> {
     Box::pin(xnxx::refresh_stream(client, page, stream))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashSet;
+
+    #[test]
+    fn sites_registry_is_well_formed() {
+        assert!(!SITES.is_empty(), "SITES must contain at least one plugin");
+
+        let mut ids = HashSet::new();
+        for site in SITES {
+            assert!(!site.id.is_empty(), "site id must not be empty");
+            assert!(ids.insert(site.id), "duplicate site id: {}", site.id);
+            assert!(
+                site.matches as usize != 0,
+                "site '{}' has null matches",
+                site.id
+            );
+            assert!(
+                site.extract as usize != 0,
+                "site '{}' has null extract",
+                site.id
+            );
+        }
+    }
+}
