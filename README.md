@@ -88,3 +88,7 @@ No changes to `lib.rs` or `extract/engine.rs` needed. Set `refresh` only when CD
 **ffmpeg:** provided by the **`ffmpeg-sidecar`** crate (bundled binary, downloaded to `~/.ffmpeg-sidecar` on first HD download). We do **not** call `yt-dlp` or your system `ffmpeg`. `make prefetch-tools` fetches it early; `make install-deps-mac` is optional and unused by the tool today.
 
 More supported sites: [_docs/sites.md](_docs/sites.md).
+
+## License
+
+MIT — see [LICENSE](LICENSE).
