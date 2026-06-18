@@ -24,7 +24,7 @@ pub fn format_bytes(n: u64) -> String {
 pub fn format_line(p: DownloadProgress<'_>) -> String {
     const W: usize = 24;
     match p.total.filter(|&t| t > 0) {
-        Some(total) => {
+        | Some(total) => {
             let pct = (p.downloaded as f64 / total as f64 * 100.0).min(100.0);
             let filled = ((pct / 100.0) * W as f64).round() as usize;
             let filled = filled.min(W);
@@ -41,8 +41,12 @@ pub fn format_line(p: DownloadProgress<'_>) -> String {
                 format_bytes(p.downloaded),
                 format_bytes(total)
             )
-        }
-        None => format!("{}  {} downloaded", p.label, format_bytes(p.downloaded)),
+        },
+        | None => format!(
+            "{}  {} downloaded",
+            p.label,
+            format_bytes(p.downloaded)
+        ),
     }
 }
 

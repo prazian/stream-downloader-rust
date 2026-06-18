@@ -17,7 +17,11 @@ pub fn select_for_kinds(
 
     let mut out = Vec::new();
     if kinds.contains(&MediaKind::Video) {
-        out.extend(select_videos(sd, options.quality, user_agent));
+        out.extend(select_videos(
+            sd,
+            options.quality,
+            user_agent,
+        ));
     }
     if kinds.contains(&MediaKind::Audio)
         && let Some(s) = best_audio(sd, user_agent)
@@ -27,7 +31,11 @@ pub fn select_for_kinds(
     out
 }
 
-fn select_videos(sd: &StreamingData, quality: Quality, ua: &'static str) -> Vec<Stream> {
+fn select_videos(
+    sd: &StreamingData,
+    quality: Quality,
+    ua: &'static str,
+) -> Vec<Stream> {
     let by_height = video_by_height(sd, ua);
     let pick = quality.pick(by_height.keys());
     pick.into_iter()
@@ -35,7 +43,10 @@ fn select_videos(sd: &StreamingData, quality: Quality, ua: &'static str) -> Vec<
         .collect()
 }
 
-fn video_by_height(sd: &StreamingData, ua: &'static str) -> BTreeMap<u32, Stream> {
+fn video_by_height(
+    sd: &StreamingData,
+    ua: &'static str,
+) -> BTreeMap<u32, Stream> {
     let audio = best_audio_part(sd, ua);
     let mut map = BTreeMap::new();
     for f in all_formats(sd).filter(|f| f.url.is_some() && is_muxed(f)) {
@@ -45,9 +56,12 @@ fn video_by_height(sd: &StreamingData, ua: &'static str) -> BTreeMap<u32, Stream
         }
     }
     if let Some(a) = audio {
-        for f in all_formats(sd).filter(|f| f.url.is_some() && is_video_only(f)) {
+        for f in all_formats(sd).filter(|f| f.url.is_some() && is_video_only(f))
+        {
             let h = f.height.unwrap_or(0);
-            if let Some(s) = stream_from(f, MediaKind::Video, ua, Some(a.clone())) {
+            if let Some(s) =
+                stream_from(f, MediaKind::Video, ua, Some(a.clone()))
+            {
                 map.insert(h, s);
             }
         }
@@ -55,14 +69,20 @@ fn video_by_height(sd: &StreamingData, ua: &'static str) -> BTreeMap<u32, Stream
     map
 }
 
-fn best_audio_part(sd: &StreamingData, ua: &'static str) -> Option<MuxPart> {
+fn best_audio_part(
+    sd: &StreamingData,
+    ua: &'static str,
+) -> Option<MuxPart> {
     best_audio(sd, ua).map(|s| MuxPart {
         url: s.url,
         download_user_agent: s.download_user_agent,
     })
 }
 
-fn best_audio(sd: &StreamingData, ua: &'static str) -> Option<Stream> {
+fn best_audio(
+    sd: &StreamingData,
+    ua: &'static str,
+) -> Option<Stream> {
     all_formats(sd)
         .filter(|f| f.url.is_some() && is_audio(f))
         .max_by_key(|f| f.bitrate.unwrap_or(0))
@@ -98,13 +118,16 @@ fn all_formats(sd: &StreamingData) -> impl Iterator<Item = &Format> {
 
 fn is_muxed(f: &Format) -> bool {
     f.mime_type.as_deref().is_some_and(|m| {
-        m.starts_with("video/") && (m.contains("mp4a") || f.audio_channels.is_some())
+        m.starts_with("video/")
+            && (m.contains("mp4a") || f.audio_channels.is_some())
     })
 }
 
 fn is_video_only(f: &Format) -> bool {
     f.mime_type.as_deref().is_some_and(|m| {
-        m.starts_with("video/") && !m.contains("mp4a") && f.audio_channels.is_none()
+        m.starts_with("video/")
+            && !m.contains("mp4a")
+            && f.audio_channels.is_none()
     })
 }
 
@@ -157,7 +180,10 @@ mod tests {
     const UA: &str = "test-ua";
 
     fn response() -> PlayerResponse {
-        serde_json::from_str(include_str!("../../tests/fixtures/youtube_innertube.json")).unwrap()
+        serde_json::from_str(include_str!(
+            "../../tests/fixtures/youtube_innertube.json"
+        ))
+        .unwrap()
     }
 
     fn opts(quality: Quality) -> ExtractOptions {
@@ -171,7 +197,10 @@ mod tests {
     fn best_picks_highest_with_mux() {
         let streams = select_for_kinds(&response(), &opts(Quality::Best), UA);
         assert_eq!(streams.len(), 1);
-        assert_eq!(streams[0].label.as_deref(), Some("1080p"));
+        assert_eq!(
+            streams[0].label.as_deref(),
+            Some("1080p")
+        );
         assert!(streams[0].mux_audio.is_some());
     }
 
@@ -183,8 +212,15 @@ mod tests {
 
     #[test]
     fn specific_height() {
-        let streams = select_for_kinds(&response(), &opts(Quality::Height(720)), UA);
+        let streams = select_for_kinds(
+            &response(),
+            &opts(Quality::Height(720)),
+            UA,
+        );
         assert_eq!(streams.len(), 1);
-        assert_eq!(streams[0].label.as_deref(), Some("720p"));
+        assert_eq!(
+            streams[0].label.as_deref(),
+            Some("720p")
+        );
     }
 }

@@ -2,12 +2,15 @@ use clap::Parser;
 use std::io::Write;
 use std::path::PathBuf;
 use stream_downloader::{
-    DownloadOptions, DownloadProgress, MediaKind, Quality, Session, format_line,
-    validate_output_dir, validate_page_url,
+    DownloadOptions, DownloadProgress, MediaKind, Quality, Session,
+    format_line, validate_output_dir, validate_page_url,
 };
 
 #[derive(Parser, Debug)]
-#[command(name = "stream-dl", about = "Download media files from web pages")]
+#[command(
+    name = "stream-dl",
+    about = "Download media files from web pages"
+)]
 struct Cli {
     #[arg(short = 'u', long = "url")]
     url: String,
@@ -16,7 +19,11 @@ struct Cli {
     output: Option<PathBuf>,
 
     /// Video quality: best (default), 720p, 1080p, 4k, …
-    #[arg(short = 'q', long = "quality", conflicts_with = "all")]
+    #[arg(
+        short = 'q',
+        long = "quality",
+        conflicts_with = "all"
+    )]
     quality: Option<String>,
 
     /// Download every available resolution
@@ -55,7 +62,11 @@ async fn run(cli: Cli) -> stream_downloader::Result<()> {
 
     let session = Session::new();
     let on_progress = |p: DownloadProgress<'_>| {
-        let _ = write!(std::io::stderr(), "\r{}", format_line(p));
+        let _ = write!(
+            std::io::stderr(),
+            "\r{}",
+            format_line(p)
+        );
         let _ = std::io::stderr().flush();
     };
     let files = session
@@ -64,7 +75,9 @@ async fn run(cli: Cli) -> stream_downloader::Result<()> {
             &kinds,
             quality,
             &DownloadOptions {
-                output_dir: &cli.output.unwrap_or_else(|| PathBuf::from(".")),
+                output_dir: &cli
+                    .output
+                    .unwrap_or_else(|| PathBuf::from(".")),
                 referer: None,
                 on_progress: Some(&on_progress),
             },

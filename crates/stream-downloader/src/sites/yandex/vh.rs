@@ -22,7 +22,10 @@ pub fn content_id(url: &Url) -> Option<String> {
 }
 
 fn is_content_id(id: &str) -> bool {
-    (id.len() == 32 && id.chars().all(|c| c.is_ascii_hexdigit()))
+    (id.len() == 32
+        && id
+            .chars()
+            .all(|c| c.is_ascii_hexdigit()))
         || ((9..=13).contains(&id.len())
             && id
                 .chars()
@@ -35,7 +38,10 @@ pub async fn extract(
     title_hint: Option<&str>,
     options: &ExtractOptions,
 ) -> Result<Vec<Stream>> {
-    if !options.kinds.contains(&MediaKind::Video) {
+    if !options
+        .kinds
+        .contains(&MediaKind::Video)
+    {
         return Ok(Vec::new());
     }
 
@@ -61,7 +67,11 @@ pub async fn extract(
         .map(|(url, signed)| Stream {
             url: Url::parse(&url).expect("vh url"),
             kind: MediaKind::Video,
-            label: Some(if signed { "best".into() } else { "auto".into() }),
+            label: Some(if signed {
+                "best".into()
+            } else {
+                "auto".into()
+            }),
             download_user_agent: None,
             mux_audio: None,
             hls: true,
@@ -79,8 +89,8 @@ pub async fn extract(
         }
     }
     Ok(match options.quality {
-        Quality::All => streams,
-        Quality::Best | Quality::Height(_) => vec![streams.remove(0)],
+        | Quality::All => streams,
+        | Quality::Best | Quality::Height(_) => vec![streams.remove(0)],
     })
 }
 
@@ -92,7 +102,10 @@ fn rank(stream: &Stream) -> u8 {
     }
 }
 
-async fn fetch_content(client: &reqwest::Client, content_id: &str) -> Result<VhContent> {
+async fn fetch_content(
+    client: &reqwest::Client,
+    content_id: &str,
+) -> Result<VhContent> {
     let url = format!(
         "https://frontend.vh.yandex.ru/v23/player/{content_id}.json?stream_options=hires&disable_trackings=1"
     );
@@ -103,7 +116,8 @@ async fn fetch_content(client: &reqwest::Client, content_id: &str) -> Result<VhC
         .error_for_status()?
         .json()
         .await?;
-    body.content.ok_or(Error::NoStreamsFound)
+    body.content
+        .ok_or(Error::NoStreamsFound)
 }
 
 #[derive(Debug, Deserialize)]
@@ -130,8 +144,13 @@ mod tests {
 
     #[test]
     fn parses_content_ids() {
-        let url = Url::parse("https://frontend.vh.yandex.ru/player/vIsS3AJqE7Y4").unwrap();
-        assert_eq!(content_id(&url).as_deref(), Some("vIsS3AJqE7Y4"));
+        let url =
+            Url::parse("https://frontend.vh.yandex.ru/player/vIsS3AJqE7Y4")
+                .unwrap();
+        assert_eq!(
+            content_id(&url).as_deref(),
+            Some("vIsS3AJqE7Y4")
+        );
         let url =
             Url::parse("https://yandex.ru/portal/video?stream_id=4dbb36ec4e0526d58f9f2dc8f0ecf374")
                 .unwrap();
@@ -148,7 +167,10 @@ mod tests {
         ))
         .unwrap();
         let content = body.content.unwrap();
-        let signed = content.streams.as_ref().unwrap()[0].url.clone().unwrap();
+        let signed = content.streams.as_ref().unwrap()[0]
+            .url
+            .clone()
+            .unwrap();
         let stream = Stream {
             url: Url::parse(&signed).unwrap(),
             kind: MediaKind::Video,

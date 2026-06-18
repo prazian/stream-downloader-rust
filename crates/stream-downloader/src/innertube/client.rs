@@ -28,7 +28,9 @@ pub async fn player(
         .await?
         .error_for_status()?;
 
-    let data = response.json::<PlayerResponse>().await?;
+    let data = response
+        .json::<PlayerResponse>()
+        .await?;
     if data.playability.status.as_deref() != Some("OK") {
         let reason = data
             .playability

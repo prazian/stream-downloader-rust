@@ -8,11 +8,14 @@ pub enum HostMatch {
 }
 
 impl HostMatch {
-    pub fn matches(&self, host: &str) -> bool {
+    pub fn matches(
+        &self,
+        host: &str,
+    ) -> bool {
         match self {
-            HostMatch::Suffix(suffixes) => suffixes
-                .iter()
-                .any(|suffix| host == *suffix || host.ends_with(&format!(".{suffix}"))),
+            | HostMatch::Suffix(suffixes) => suffixes.iter().any(|suffix| {
+                host == *suffix || host.ends_with(&format!(".{suffix}"))
+            }),
         }
     }
 }
@@ -66,10 +69,15 @@ impl Default for ProfileRegistry {
 
 impl ProfileRegistry {
     pub const fn new(profiles: &'static [SiteProfile]) -> Self {
-        Self { profiles }
+        Self {
+            profiles,
+        }
     }
 
-    pub fn matching<'a>(&'a self, url: &Url) -> impl Iterator<Item = &'a SiteProfile> {
+    pub fn matching<'a>(
+        &'a self,
+        url: &Url,
+    ) -> impl Iterator<Item = &'a SiteProfile> {
         let host = url.host_str().unwrap_or_default();
         self.profiles
             .iter()

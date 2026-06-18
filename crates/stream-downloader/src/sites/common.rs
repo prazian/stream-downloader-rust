@@ -11,14 +11,21 @@ use url::Url;
 pub const BROWSER_UA: &str = crate::client::BROWSER_UA;
 
 pub fn wants_video(options: &ExtractOptions) -> bool {
-    options.kinds.contains(&MediaKind::Video)
+    options
+        .kinds
+        .contains(&MediaKind::Video)
 }
 
 pub fn parse_url(raw: &str) -> Result<Url> {
     Url::parse(raw).map_err(|e| Error::InvalidUrl(e.to_string()))
 }
 
-pub fn video_stream(url: Url, height: u32, hls: bool, referer: Option<&'static str>) -> Stream {
+pub fn video_stream(
+    url: Url,
+    height: u32,
+    hls: bool,
+    referer: Option<&'static str>,
+) -> Stream {
     Stream {
         url,
         kind: MediaKind::Video,
@@ -30,11 +37,18 @@ pub fn video_stream(url: Url, height: u32, hls: bool, referer: Option<&'static s
     }
 }
 
-pub fn match_refreshed(stream: &Stream, streams: &[Stream], match_hls: bool) -> Result<Stream> {
+pub fn match_refreshed(
+    stream: &Stream,
+    streams: &[Stream],
+    match_hls: bool,
+) -> Result<Stream> {
     let height = quality::height_hint(stream);
     streams
         .iter()
-        .find(|s| quality::height_hint(s) == height && (!match_hls || s.hls == stream.hls))
+        .find(|s| {
+            quality::height_hint(s) == height
+                && (!match_hls || s.hls == stream.hls)
+        })
         .cloned()
         .or_else(|| {
             streams
@@ -60,8 +74,10 @@ pub async fn hls_streams_from_master(
     let base = master
         .join("./")
         .map_err(|e| Error::InvalidUrl(e.to_string()))?;
-    Ok(hls::parse_master_with_base(&body, Some(&base))?
-        .into_iter()
-        .map(|v| video_stream(v.url, v.height, true, None))
-        .collect())
+    Ok(
+        hls::parse_master_with_base(&body, Some(&base))?
+            .into_iter()
+            .map(|v| video_stream(v.url, v.height, true, None))
+            .collect(),
+    )
 }

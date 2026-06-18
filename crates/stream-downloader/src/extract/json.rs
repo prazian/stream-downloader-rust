@@ -7,7 +7,11 @@ use url::Url;
 
 const CIPHER_KEYS: &[&str] = &["signatureCipher", "cipher"];
 
-pub fn apply_rule(html: &str, rule: &JsonMapRule, options: &ExtractOptions) -> Vec<Stream> {
+pub fn apply_rule(
+    html: &str,
+    rule: &JsonMapRule,
+    options: &ExtractOptions,
+) -> Vec<Stream> {
     let Some(json) = extract_embedded_json(html, rule.marker) else {
         return Vec::new();
     };
@@ -19,7 +23,8 @@ pub fn apply_rule(html: &str, rule: &JsonMapRule, options: &ExtractOptions) -> V
     let mut streams = Vec::new();
 
     for path in rule.item_paths {
-        let Some(items) = value_at_path(&root, path).and_then(Value::as_array) else {
+        let Some(items) = value_at_path(&root, path).and_then(Value::as_array)
+        else {
             continue;
         };
         for item in items {
@@ -41,7 +46,11 @@ pub fn apply_rule(html: &str, rule: &JsonMapRule, options: &ExtractOptions) -> V
             streams.push(Stream {
                 url: parsed,
                 kind,
-                label: label_from_item(item, rule.label_key, rule.alt_label_key),
+                label: label_from_item(
+                    item,
+                    rule.label_key,
+                    rule.alt_label_key,
+                ),
                 download_user_agent: None,
                 mux_audio: None,
                 hls: false,
@@ -53,8 +62,14 @@ pub fn apply_rule(html: &str, rule: &JsonMapRule, options: &ExtractOptions) -> V
     streams
 }
 
-fn file_url_from_item(item: &Value, url_key: &str) -> Option<String> {
-    if let Some(url) = item.get(url_key).and_then(Value::as_str) {
+fn file_url_from_item(
+    item: &Value,
+    url_key: &str,
+) -> Option<String> {
+    if let Some(url) = item
+        .get(url_key)
+        .and_then(Value::as_str)
+    {
         return Some(url.to_owned());
     }
     for key in CIPHER_KEYS {
@@ -78,12 +93,14 @@ fn label_from_item(
         .and_then(Value::as_str)
         .map(str::to_owned)
         .or_else(|| {
-            alt_label_key.and_then(|key| item.get(key)).map(|value| {
-                value
-                    .as_str()
-                    .map(str::to_owned)
-                    .unwrap_or_else(|| value.to_string())
-            })
+            alt_label_key
+                .and_then(|key| item.get(key))
+                .map(|value| {
+                    value
+                        .as_str()
+                        .map(str::to_owned)
+                        .unwrap_or_else(|| value.to_string())
+                })
         })
 }
 
@@ -99,7 +116,10 @@ fn mime_kind(mime_type: &str) -> MediaKind {
     }
 }
 
-fn value_at_path<'a>(value: &'a Value, path: &str) -> Option<&'a Value> {
+fn value_at_path<'a>(
+    value: &'a Value,
+    path: &str,
+) -> Option<&'a Value> {
     let mut current = value;
     for segment in path.split('.') {
         current = current.get(segment)?;
@@ -107,7 +127,10 @@ fn value_at_path<'a>(value: &'a Value, path: &str) -> Option<&'a Value> {
     Some(current)
 }
 
-pub fn extract_embedded_json(html: &str, marker: &str) -> Option<String> {
+pub fn extract_embedded_json(
+    html: &str,
+    marker: &str,
+) -> Option<String> {
     let needle = format!("{marker} = ");
     let start = html.find(&needle)? + needle.len();
     let rest = html.get(start..)?.trim_start();
@@ -136,15 +159,15 @@ pub(crate) fn extract_json_object(input: &str) -> Option<String> {
         }
 
         match ch {
-            '"' => in_string = true,
-            '{' => depth += 1,
-            '}' => {
+            | '"' => in_string = true,
+            | '{' => depth += 1,
+            | '}' => {
                 depth -= 1;
                 if depth == 0 {
                     return input.get(..=index).map(str::to_owned);
                 }
-            }
-            _ => {}
+            },
+            | _ => {},
         }
     }
 
@@ -164,7 +187,8 @@ mod tests {
     #[test]
     fn pulls_object_after_marker() {
         let html = r#"var ytInitialPlayerResponse = {"streamingData":{"formats":[]}};"#;
-        let json = extract_embedded_json(html, "ytInitialPlayerResponse").unwrap();
+        let json =
+            extract_embedded_json(html, "ytInitialPlayerResponse").unwrap();
         assert!(json.contains("streamingData"));
     }
 }

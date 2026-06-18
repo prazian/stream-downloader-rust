@@ -21,7 +21,9 @@ const CLIENT: ClientConfig = ClientConfig {
 
 pub fn matches_host(url: &Url) -> bool {
     url.host_str().is_some_and(|h| {
-        h == "youtu.be" || h.ends_with("youtube.com") || h.ends_with("youtube-nocookie.com")
+        h == "youtu.be"
+            || h.ends_with("youtube.com")
+            || h.ends_with("youtube-nocookie.com")
     })
 }
 
@@ -44,11 +46,14 @@ pub async fn extract(
     page: &FetchedPage,
     options: &ExtractOptions,
 ) -> Result<Vec<Stream>> {
-    let id = video_id(&page.info.url)
-        .ok_or_else(|| crate::error::Error::InvalidUrl("missing YouTube video id".into()))?;
+    let id = video_id(&page.info.url).ok_or_else(|| {
+        crate::error::Error::InvalidUrl("missing YouTube video id".into())
+    })?;
     let keys = innertube::PageKeys::from_html(&page.html)?;
     let response = innertube::player(client, &keys, CLIENT, &id).await?;
-    Ok(innertube::select_for_kinds(&response, options, USER_AGENT))
+    Ok(innertube::select_for_kinds(
+        &response, options, USER_AGENT,
+    ))
 }
 
 #[cfg(test)]
@@ -58,7 +63,10 @@ mod tests {
     #[test]
     fn parses_watch_and_short_urls() {
         assert_eq!(
-            video_id(&Url::parse("https://www.youtube.com/watch?v=abc").unwrap()).as_deref(),
+            video_id(
+                &Url::parse("https://www.youtube.com/watch?v=abc").unwrap()
+            )
+            .as_deref(),
             Some("abc")
         );
         assert_eq!(

@@ -15,7 +15,10 @@ impl PageKeys {
     }
 }
 
-fn extract_json_string(html: &str, key: &str) -> Result<String> {
+fn extract_json_string(
+    html: &str,
+    key: &str,
+) -> Result<String> {
     let needle = format!("\"{key}\":\"");
     let start = html
         .find(&needle)

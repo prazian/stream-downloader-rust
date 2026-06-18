@@ -11,7 +11,10 @@ const USER_AGENT: &str = crate::client::BROWSER_UA;
 
 pub fn matches_host(url: &Url) -> bool {
     url.host_str().is_some_and(|h| {
-        matches!(h, "vk.com" | "vk.ru" | "m.vk.com" | "vkvideo.ru") || h.ends_with(".vk.com")
+        matches!(
+            h,
+            "vk.com" | "vk.ru" | "m.vk.com" | "vkvideo.ru"
+        ) || h.ends_with(".vk.com")
     })
 }
 
@@ -48,16 +51,23 @@ pub async fn extract(
     _title: &str,
     options: &ExtractOptions,
 ) -> Result<Vec<Stream>> {
-    if !options.kinds.contains(&MediaKind::Video) {
+    if !options
+        .kinds
+        .contains(&MediaKind::Video)
+    {
         return Ok(Vec::new());
     }
-    let key = video_key(url).ok_or_else(|| Error::InvalidUrl("missing VK video id".into()))?;
+    let key = video_key(url)
+        .ok_or_else(|| Error::InvalidUrl("missing VK video id".into()))?;
     let text = fetch_player_payload(client, &key).await?;
     let streams = parse_sources(&text)?;
     quality::pick_streams_prefer_progressive(streams, options.quality)
 }
 
-async fn fetch_player_payload(client: &reqwest::Client, key: &str) -> Result<String> {
+async fn fetch_player_payload(
+    client: &reqwest::Client,
+    key: &str,
+) -> Result<String> {
     let bytes = client
         .post("https://vk.com/al_video.php")
         .header("X-Requested-With", "XMLHttpRequest")
@@ -74,7 +84,9 @@ async fn fetch_player_payload(client: &reqwest::Client, key: &str) -> Result<Str
         .error_for_status()?
         .bytes()
         .await?;
-    Ok(decode_vk_payload(&String::from_utf8_lossy(&bytes)))
+    Ok(decode_vk_payload(
+        &String::from_utf8_lossy(&bytes),
+    ))
 }
 
 fn decode_vk_payload(text: &str) -> String {
@@ -89,7 +101,9 @@ fn parse_sources(text: &str) -> Result<Vec<Stream>> {
     while let Some(idx) = rest.find("https://") {
         rest = &rest[idx..];
         let end = rest[8..]
-            .find(|c: char| c == '"' || c == '\'' || c == '<' || c.is_whitespace())
+            .find(|c: char| {
+                c == '"' || c == '\'' || c == '<' || c.is_whitespace()
+            })
             .map(|i| i + 8)
             .unwrap_or(rest.len());
         let url = &rest[..end];
@@ -98,11 +112,17 @@ fn parse_sources(text: &str) -> Result<Vec<Stream>> {
             continue;
         }
         let is_hls = url.contains(".m3u8");
-        let is_mp4 = url.contains("vkvd") && url.contains("okcdn.ru") && !is_hls;
+        let is_mp4 =
+            url.contains("vkvd") && url.contains("okcdn.ru") && !is_hls;
         if is_hls || is_mp4 {
-            let height = vk_type_height(url).unwrap_or(if is_hls { 1080 } else { 720 });
+            let height = vk_type_height(url).unwrap_or(if is_hls {
+                1080
+            } else {
+                720
+            });
             streams.push(Stream {
-                url: Url::parse(url).map_err(|e| Error::InvalidUrl(e.to_string()))?,
+                url: Url::parse(url)
+                    .map_err(|e| Error::InvalidUrl(e.to_string()))?,
                 kind: MediaKind::Video,
                 label: Some(format!("{height}p")),
                 download_user_agent: Some(USER_AGENT),
@@ -120,15 +140,20 @@ fn parse_sources(text: &str) -> Result<Vec<Stream>> {
 }
 
 fn vk_type_height(url: &str) -> Option<u32> {
-    let t = url.split("type=").nth(1)?.chars().next()?.to_digit(10)?;
+    let t = url
+        .split("type=")
+        .nth(1)?
+        .chars()
+        .next()?
+        .to_digit(10)?;
     Some(match t {
-        5..=7 => 1080,
-        3 => 720,
-        2 => 480,
-        1 => 360,
-        0 => 240,
-        4 => 144,
-        _ => 0,
+        | 5..=7 => 1080,
+        | 3 => 720,
+        | 2 => 480,
+        | 1 => 360,
+        | 0 => 240,
+        | 4 => 144,
+        | _ => 0,
     })
 }
 
@@ -139,22 +164,30 @@ mod tests {
 
     #[test]
     fn parses_video_keys() {
-        let url = Url::parse("http://vk.com/video-223140511_456239655").unwrap();
-        assert_eq!(video_key(&url).as_deref(), Some("-223140511_456239655"));
+        let url =
+            Url::parse("http://vk.com/video-223140511_456239655").unwrap();
+        assert_eq!(
+            video_key(&url).as_deref(),
+            Some("-223140511_456239655")
+        );
     }
 
     #[test]
     fn parses_sources_from_fixture() {
-        let html = decode_vk_payload(include_str!("../../tests/fixtures/vk_al_video.html"));
+        let html = decode_vk_payload(include_str!(
+            "../../tests/fixtures/vk_al_video.html"
+        ));
         let streams = parse_sources(&html).unwrap();
         assert!(streams.iter().any(|s| s.hls));
         assert!(streams.iter().any(|s| !s.hls));
-        assert!(
-            !streams
-                .iter()
-                .any(|s| s.url.as_str().contains("getVideoPreview"))
-        );
-        let best = quality::pick_streams_prefer_progressive(streams, Quality::Best).unwrap();
+        assert!(!streams.iter().any(|s| {
+            s.url
+                .as_str()
+                .contains("getVideoPreview")
+        }));
+        let best =
+            quality::pick_streams_prefer_progressive(streams, Quality::Best)
+                .unwrap();
         assert!(!best[0].hls);
     }
 }

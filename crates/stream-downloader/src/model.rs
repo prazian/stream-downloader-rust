@@ -19,8 +19,10 @@ impl MediaKind {
 
     pub fn file_extensions(self) -> &'static [&'static str] {
         match self {
-            MediaKind::Video => &["mp4", "webm", "mkv", "m4v", "mov"],
-            MediaKind::Audio => &["mp3", "m4a", "aac", "ogg", "wav", "flac"],
+            | MediaKind::Video => &["mp4", "webm", "mkv", "m4v", "mov"],
+            | MediaKind::Audio => &[
+                "mp3", "m4a", "aac", "ogg", "wav", "flac",
+            ],
         }
     }
 }

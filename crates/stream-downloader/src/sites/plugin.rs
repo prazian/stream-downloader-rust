@@ -11,13 +11,17 @@ pub type ExtractFn = for<'a> fn(
     &'a reqwest::Client,
     &'a FetchedPage,
     &'a ExtractOptions,
-) -> Pin<Box<dyn Future<Output = Result<Vec<Stream>>> + Send + 'a>>;
+) -> Pin<
+    Box<dyn Future<Output = Result<Vec<Stream>>> + Send + 'a>,
+>;
 
 pub type RefreshFn = for<'a> fn(
     &'a reqwest::Client,
     &'a FetchedPage,
     &'a Stream,
-) -> Pin<Box<dyn Future<Output = Result<Stream>> + Send + 'a>>;
+) -> Pin<
+    Box<dyn Future<Output = Result<Stream>> + Send + 'a>,
+>;
 
 /// One registered site. Add a row to [`super::registry::SITES`] to wire a new module.
 #[derive(Clone, Copy)]

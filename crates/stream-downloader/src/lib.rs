@@ -18,8 +18,8 @@ pub use download::{DownloadOptions, DownloadedFile, Downloader};
 pub use error::{Error, Result};
 pub use extract::profiles;
 pub use extract::{
-    ExtractOptions, Extractor, HostMatch, JsonMapRule, PageExtractor, ProfileRegistry, ProfileRule,
-    SiteProfile,
+    ExtractOptions, Extractor, HostMatch, JsonMapRule, PageExtractor,
+    ProfileRegistry, ProfileRule, SiteProfile,
 };
 pub use merge::prefetch_tools;
 pub use model::{FetchedPage, MediaKind, PageInfo, Stream};
@@ -116,7 +116,10 @@ impl Session {
                     },
                 )
                 .await?;
-            results.push(DownloadedFile { stream, path });
+            results.push(DownloadedFile {
+                stream,
+                path,
+            });
         }
         Ok(results)
     }
@@ -134,12 +137,15 @@ async fn refresh_stream(
 pub fn validate_page_url(raw: &str) -> Result<url::Url> {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
-        return Err(Error::InvalidUrl("URL must not be empty".into()));
+        return Err(Error::InvalidUrl(
+            "URL must not be empty".into(),
+        ));
     }
-    let parsed = url::Url::parse(trimmed).map_err(|e| Error::InvalidUrl(e.to_string()))?;
+    let parsed = url::Url::parse(trimmed)
+        .map_err(|e| Error::InvalidUrl(e.to_string()))?;
     match parsed.scheme() {
-        "http" | "https" => Ok(parsed),
-        scheme => Err(Error::InvalidUrl(format!(
+        | "http" | "https" => Ok(parsed),
+        | scheme => Err(Error::InvalidUrl(format!(
             "unsupported scheme `{scheme}` (use http or https)"
         ))),
     }
@@ -151,7 +157,9 @@ pub fn validate_output_dir(path: Option<&Path>) -> Result<()> {
         return Ok(());
     };
     if path.as_os_str().is_empty() {
-        return Err(Error::InvalidOutput("output path must not be empty".into()));
+        return Err(Error::InvalidOutput(
+            "output path must not be empty".into(),
+        ));
     }
     if path.exists() && !path.is_dir() {
         return Err(Error::InvalidOutput(format!(
@@ -169,7 +177,10 @@ mod tests {
 
     #[test]
     fn rejects_empty_and_non_http_urls() {
-        assert!(matches!(validate_page_url(""), Err(Error::InvalidUrl(_))));
+        assert!(matches!(
+            validate_page_url(""),
+            Err(Error::InvalidUrl(_))
+        ));
         assert!(matches!(
             validate_page_url("ftp://example.com"),
             Err(Error::InvalidUrl(_))
@@ -211,7 +222,10 @@ mod tests {
             .expect("discover");
         assert!(!streams.is_empty());
         assert!(!streams[0].hls);
-        assert_eq!(crate::quality::height_hint(&streams[0]), 1080);
+        assert_eq!(
+            crate::quality::height_hint(&streams[0]),
+            1080
+        );
     }
 
     #[tokio::test]
@@ -228,7 +242,10 @@ mod tests {
             .expect("discover");
         assert!(!streams.is_empty());
         assert!(streams[0].hls);
-        assert_eq!(crate::quality::height_hint(&streams[0]), 1080);
+        assert_eq!(
+            crate::quality::height_hint(&streams[0]),
+            1080
+        );
     }
 
     #[tokio::test]
@@ -245,7 +262,10 @@ mod tests {
             .expect("discover");
         assert!(!streams.is_empty());
         assert!(!streams[0].hls);
-        assert_eq!(crate::quality::height_hint(&streams[0]), 1080);
+        assert_eq!(
+            crate::quality::height_hint(&streams[0]),
+            1080
+        );
     }
 
     #[tokio::test]
@@ -262,7 +282,10 @@ mod tests {
             .expect("discover");
         assert!(!streams.is_empty());
         assert!(streams[0].hls);
-        assert_eq!(crate::quality::height_hint(&streams[0]), 720);
+        assert_eq!(
+            crate::quality::height_hint(&streams[0]),
+            720
+        );
     }
 
     #[tokio::test]
@@ -278,6 +301,9 @@ mod tests {
             .await
             .expect("discover");
         assert!(!streams.is_empty());
-        assert_eq!(crate::quality::height_hint(&streams[0]), 1080);
+        assert_eq!(
+            crate::quality::height_hint(&streams[0]),
+            1080
+        );
     }
 }

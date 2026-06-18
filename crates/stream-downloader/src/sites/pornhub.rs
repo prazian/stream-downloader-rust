@@ -13,7 +13,9 @@ use url::Url;
 
 pub fn matches_host(url: &Url) -> bool {
     url.host_str().is_some_and(|host| {
-        let h = host.strip_prefix("www.").unwrap_or(host);
+        let h = host
+            .strip_prefix("www.")
+            .unwrap_or(host);
         h.ends_with("pornhub.com")
             || h.ends_with(".pornhub.com")
             || h.ends_with("pornhub.org")
@@ -70,16 +72,22 @@ fn parse_media_definitions(html: &str) -> Result<Vec<MediaDefinition>> {
         .get("mediaDefinitions")
         .ok_or(Error::NoStreamsFound)
         .and_then(|value| {
-            serde_json::from_value(value.clone()).map_err(|e| Error::InvalidUrl(e.to_string()))
+            serde_json::from_value(value.clone())
+                .map_err(|e| Error::InvalidUrl(e.to_string()))
         })
 }
 
 fn parse_flashvars(html: &str) -> Result<Value> {
     let marker = "var flashvars_";
-    let pos = html.find(marker).ok_or(Error::NoStreamsFound)?;
+    let pos = html
+        .find(marker)
+        .ok_or(Error::NoStreamsFound)?;
     let after = &html[pos + marker.len()..];
-    let brace = after.find('{').ok_or(Error::NoStreamsFound)?;
-    let raw = extract_json_object(&after[brace..]).ok_or(Error::NoStreamsFound)?;
+    let brace = after
+        .find('{')
+        .ok_or(Error::NoStreamsFound)?;
+    let raw =
+        extract_json_object(&after[brace..]).ok_or(Error::NoStreamsFound)?;
     serde_json::from_str(&raw).map_err(|e| Error::InvalidUrl(e.to_string()))
 }
 
@@ -88,7 +96,10 @@ async fn resolve_remote(
     defs: Vec<MediaDefinition>,
     referer: &str,
 ) -> Result<Vec<MediaDefinition>> {
-    let Some(remote) = defs.iter().find(|d| d.remote == Some(true)) else {
+    let Some(remote) = defs
+        .iter()
+        .find(|d| d.remote == Some(true))
+    else {
         return Ok(defs);
     };
     client::browser_get(client, remote.video_url.trim(), referer)
@@ -107,12 +118,20 @@ fn streams_from_definitions(defs: &[MediaDefinition]) -> Result<Vec<Stream>> {
             continue;
         }
         let url = unescape_url(&def.video_url);
-        let is_hls = def.format.as_deref() == Some("hls") || url.contains(".m3u8");
-        let height = def.height.unwrap_or_else(|| parse_quality(&def.quality));
+        let is_hls =
+            def.format.as_deref() == Some("hls") || url.contains(".m3u8");
+        let height = def
+            .height
+            .unwrap_or_else(|| parse_quality(&def.quality));
         if height == 0 {
             continue;
         }
-        streams.push(common::video_stream(parse_url(&url)?, height, is_hls, None));
+        streams.push(common::video_stream(
+            parse_url(&url)?,
+            height,
+            is_hls,
+            None,
+        ));
     }
     if streams.is_empty() {
         Err(Error::NoStreamsFound)
@@ -127,9 +146,9 @@ fn unescape_url(raw: &str) -> String {
 
 fn parse_quality(value: &Value) -> u32 {
     match value {
-        Value::String(s) => s.parse().unwrap_or(0),
-        Value::Number(n) => n.as_u64().unwrap_or(0) as u32,
-        _ => 0,
+        | Value::String(s) => s.parse().unwrap_or(0),
+        | Value::Number(n) => n.as_u64().unwrap_or(0) as u32,
+        | _ => 0,
     }
 }
 
@@ -149,25 +168,40 @@ mod tests {
 
     #[test]
     fn matches_pornhub_hosts() {
-        let url = Url::parse("https://www.pornhub.com/view_video.php?viewkey=abc").unwrap();
+        let url =
+            Url::parse("https://www.pornhub.com/view_video.php?viewkey=abc")
+                .unwrap();
         assert!(matches_host(&url));
-        let url = Url::parse("https://de.pornhub.com/view_video.php?viewkey=abc").unwrap();
+        let url =
+            Url::parse("https://de.pornhub.com/view_video.php?viewkey=abc")
+                .unwrap();
         assert!(matches_host(&url));
     }
 
     #[test]
     fn parses_view_key() {
-        let url =
-            Url::parse("https://www.pornhub.com/view_video.php?viewkey=660c3362e7ef7").unwrap();
-        assert_eq!(view_key(&url).as_deref(), Some("660c3362e7ef7"));
+        let url = Url::parse(
+            "https://www.pornhub.com/view_video.php?viewkey=660c3362e7ef7",
+        )
+        .unwrap();
+        assert_eq!(
+            view_key(&url).as_deref(),
+            Some("660c3362e7ef7")
+        );
     }
 
     #[test]
     fn parses_media_definitions_from_fixture() {
         let html = include_str!("../../tests/fixtures/pornhub_flashvars.html");
         let defs = parse_media_definitions(html).unwrap();
-        assert!(defs.iter().any(|d| d.format.as_deref() == Some("hls")));
-        assert!(defs.iter().any(|d| d.remote == Some(true)));
+        assert!(
+            defs.iter()
+                .any(|d| d.format.as_deref() == Some("hls"))
+        );
+        assert!(
+            defs.iter()
+                .any(|d| d.remote == Some(true))
+        );
         let streams = streams_from_definitions(&defs).unwrap();
         assert!(streams.iter().any(|s| s.hls));
     }

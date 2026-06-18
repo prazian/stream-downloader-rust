@@ -16,7 +16,10 @@ pub fn parse_master(body: &str) -> Result<Vec<MasterVariant>> {
 }
 
 /// Like [`parse_master`], but resolves relative variant URLs against `base`.
-pub fn parse_master_with_base(body: &str, base: Option<&Url>) -> Result<Vec<MasterVariant>> {
+pub fn parse_master_with_base(
+    body: &str,
+    base: Option<&Url>,
+) -> Result<Vec<MasterVariant>> {
     if !body.trim_start().starts_with("#EXTM3U") {
         return Err(Error::NoStreamsFound);
     }
@@ -35,7 +38,9 @@ pub fn parse_master_with_base(body: &str, base: Option<&Url>) -> Result<Vec<Mast
             continue;
         }
         let trimmed = url_line.trim();
-        let url = if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
+        let url = if trimmed.starts_with("http://")
+            || trimmed.starts_with("https://")
+        {
             Url::parse(trimmed).map_err(|e| Error::InvalidUrl(e.to_string()))?
         } else if let Some(base) = base {
             base.join(trimmed)
@@ -45,7 +50,10 @@ pub fn parse_master_with_base(body: &str, base: Option<&Url>) -> Result<Vec<Mast
                 "relative HLS URL without base: {trimmed}"
             )));
         };
-        variants.push(MasterVariant { height, url });
+        variants.push(MasterVariant {
+            height,
+            url,
+        });
     }
 
     if variants.is_empty() {

@@ -4,7 +4,11 @@ use scraper::{Html, Selector};
 use std::collections::HashSet;
 use url::Url;
 
-pub fn extract(document: &Html, base: &Url, options: &ExtractOptions) -> Vec<Stream> {
+pub fn extract(
+    document: &Html,
+    base: &Url,
+    options: &ExtractOptions,
+) -> Vec<Stream> {
     let kinds: HashSet<_> = options.kinds.iter().copied().collect();
     let mut streams = Vec::new();
 
@@ -45,7 +49,9 @@ pub fn extract(document: &Html, base: &Url, options: &ExtractOptions) -> Vec<Str
         ));
     }
 
-    streams.extend(links_by_extension(document, base, &kinds));
+    streams.extend(links_by_extension(
+        document, base, &kinds,
+    ));
     streams
 }
 
@@ -83,7 +89,10 @@ pub fn select_attr(
 }
 
 /// Full-length `<video source>` entries, skipping preview clips and Auto duplicates.
-pub(crate) fn playable_video_sources(document: &Html, base: &Url) -> Vec<Stream> {
+pub(crate) fn playable_video_sources(
+    document: &Html,
+    base: &Url,
+) -> Vec<Stream> {
     select_attr(
         document,
         "video source",
@@ -103,7 +112,11 @@ pub(crate) fn playable_video_sources(document: &Html, base: &Url) -> Vec<Stream>
     .collect()
 }
 
-fn links_by_extension(document: &Html, base: &Url, kinds: &HashSet<MediaKind>) -> Vec<Stream> {
+fn links_by_extension(
+    document: &Html,
+    base: &Url,
+    kinds: &HashSet<MediaKind>,
+) -> Vec<Stream> {
     let Ok(sel) = Selector::parse("a[href]") else {
         return Vec::new();
     };
@@ -130,7 +143,10 @@ fn links_by_extension(document: &Html, base: &Url, kinds: &HashSet<MediaKind>) -
         .collect()
 }
 
-fn has_known_extension(url: &Url, kind: MediaKind) -> bool {
+fn has_known_extension(
+    url: &Url,
+    kind: MediaKind,
+) -> bool {
     let path = url.path().to_ascii_lowercase();
     kind.file_extensions()
         .iter()
@@ -177,7 +193,10 @@ mod tests {
         let document = Html::parse_document(html);
         let sources = playable_video_sources(&document, &page_url());
         assert_eq!(sources.len(), 1);
-        assert_eq!(sources[0].label.as_deref(), Some("720p"));
+        assert_eq!(
+            sources[0].label.as_deref(),
+            Some("720p")
+        );
     }
 
     #[test]

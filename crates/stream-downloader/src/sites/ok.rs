@@ -14,8 +14,10 @@ const USER_AGENT: &str = crate::client::BROWSER_UA;
 
 pub fn matches_host(url: &Url) -> bool {
     url.host_str().is_some_and(|h| {
-        matches!(h, "ok.ru" | "m.ok.ru" | "mobile.ok.ru" | "odnoklassniki.ru")
-            || h.ends_with(".ok.ru")
+        matches!(
+            h,
+            "ok.ru" | "m.ok.ru" | "mobile.ok.ru" | "odnoklassniki.ru"
+        ) || h.ends_with(".ok.ru")
     })
 }
 
@@ -24,7 +26,11 @@ pub fn video_id(url: &Url) -> Option<String> {
     for prefix in ["/video/", "/videoembed/"] {
         if let Some(id) = path.strip_prefix(prefix) {
             let id = id.trim_end_matches('/');
-            if !id.is_empty() && id.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            if !id.is_empty()
+                && id
+                    .chars()
+                    .all(|c| c.is_ascii_digit() || c == '-')
+            {
                 return Some(id.to_owned());
             }
         }
@@ -38,17 +44,24 @@ pub async fn extract(
     title: &str,
     options: &ExtractOptions,
 ) -> Result<Vec<Stream>> {
-    if !options.kinds.contains(&MediaKind::Video) {
+    if !options
+        .kinds
+        .contains(&MediaKind::Video)
+    {
         return Ok(Vec::new());
     }
     let _ = title;
-    let id = video_id(url).ok_or_else(|| Error::InvalidUrl("missing OK.ru video id".into()))?;
+    let id = video_id(url)
+        .ok_or_else(|| Error::InvalidUrl("missing OK.ru video id".into()))?;
     let metadata = fetch_metadata(client, &id).await?;
     let streams = streams_from_metadata(&metadata)?;
     quality::pick_streams(streams, options.quality)
 }
 
-async fn fetch_metadata(client: &reqwest::Client, id: &str) -> Result<Value> {
+async fn fetch_metadata(
+    client: &reqwest::Client,
+    id: &str,
+) -> Result<Value> {
     let html = client
         .get(format!("https://ok.ru/videoembed/{id}"))
         .header("Referer", REFERER)
@@ -58,18 +71,26 @@ async fn fetch_metadata(client: &reqwest::Client, id: &str) -> Result<Value> {
         .text()
         .await?;
     let options = parse_data_options(&html)?;
-    let flashvars = options.get("flashvars").ok_or(Error::NoStreamsFound)?;
-    if let Some(url) = flashvars.get("url").and_then(Value::as_str)
-        && options.get("isExternalPlayer").and_then(Value::as_bool) == Some(true)
+    let flashvars = options
+        .get("flashvars")
+        .ok_or(Error::NoStreamsFound)?;
+    if let Some(url) = flashvars
+        .get("url")
+        .and_then(Value::as_str)
+        && options
+            .get("isExternalPlayer")
+            .and_then(Value::as_bool)
+            == Some(true)
     {
-        return Err(Error::InvalidUrl(format!("external player: {url}")));
+        return Err(Error::InvalidUrl(format!(
+            "external player: {url}"
+        )));
     }
     if let Some(raw) = flashvars.get("metadata") {
         return Ok(match raw {
-            Value::String(s) => {
-                serde_json::from_str(s).map_err(|e| Error::InvalidUrl(e.to_string()))?
-            }
-            v => v.clone(),
+            | Value::String(s) => serde_json::from_str(s)
+                .map_err(|e| Error::InvalidUrl(e.to_string()))?,
+            | v => v.clone(),
         });
     }
     let metadata_url = flashvars
@@ -88,26 +109,43 @@ async fn fetch_metadata(client: &reqwest::Client, id: &str) -> Result<Value> {
 
 fn parse_data_options(html: &str) -> Result<Value> {
     let marker = "data-options=\"";
-    let start = html.find(marker).ok_or(Error::NoStreamsFound)? + marker.len();
-    let end = html[start..].find('"').ok_or(Error::NoStreamsFound)? + start;
+    let start = html
+        .find(marker)
+        .ok_or(Error::NoStreamsFound)?
+        + marker.len();
+    let end = html[start..]
+        .find('"')
+        .ok_or(Error::NoStreamsFound)?
+        + start;
     let raw = html[start..end].replace("&quot;", "\"");
     serde_json::from_str(&raw).map_err(|e| Error::InvalidUrl(e.to_string()))
 }
 
 fn streams_from_metadata(metadata: &Value) -> Result<Vec<Stream>> {
     let mut streams = Vec::new();
-    if let Some(videos) = metadata.get("videos").and_then(Value::as_array) {
+    if let Some(videos) = metadata
+        .get("videos")
+        .and_then(Value::as_array)
+    {
         for video in videos {
             let Some(url) = video.get("url").and_then(Value::as_str) else {
                 continue;
             };
-            if video.get("disallowed").and_then(Value::as_bool) == Some(true) {
+            if video
+                .get("disallowed")
+                .and_then(Value::as_bool)
+                == Some(true)
+            {
                 continue;
             }
-            let name = video.get("name").and_then(Value::as_str).unwrap_or("?");
+            let name = video
+                .get("name")
+                .and_then(Value::as_str)
+                .unwrap_or("?");
             let height = ok_name_height(name);
             streams.push(Stream {
-                url: Url::parse(url).map_err(|e| Error::InvalidUrl(e.to_string()))?,
+                url: Url::parse(url)
+                    .map_err(|e| Error::InvalidUrl(e.to_string()))?,
                 kind: MediaKind::Video,
                 label: Some(format!("{height}p")),
                 download_user_agent: Some(USER_AGENT),
@@ -125,13 +163,13 @@ fn streams_from_metadata(metadata: &Value) -> Result<Vec<Stream>> {
 
 fn ok_name_height(name: &str) -> u32 {
     match name {
-        "full" => 1080,
-        "hd" => 720,
-        "sd" => 480,
-        "low" => 360,
-        "lowest" => 240,
-        "mobile" => 144,
-        _ => 0,
+        | "full" => 1080,
+        | "hd" => 720,
+        | "sd" => 480,
+        | "low" => 360,
+        | "lowest" => 240,
+        | "mobile" => 144,
+        | _ => 0,
     }
 }
 
@@ -142,7 +180,10 @@ mod tests {
     #[test]
     fn parses_video_id() {
         let url = Url::parse("http://ok.ru/video/9729432226499").unwrap();
-        assert_eq!(video_id(&url).as_deref(), Some("9729432226499"));
+        assert_eq!(
+            video_id(&url).as_deref(),
+            Some("9729432226499")
+        );
     }
 
     #[test]

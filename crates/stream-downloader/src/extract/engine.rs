@@ -19,7 +19,9 @@ impl Default for PageExtractor {
 
 impl PageExtractor {
     pub fn new(registry: ProfileRegistry) -> Self {
-        Self { registry }
+        Self {
+            registry,
+        }
     }
 
     pub async fn extract_page(
@@ -28,7 +30,8 @@ impl PageExtractor {
         page: &FetchedPage,
         options: &ExtractOptions,
     ) -> crate::error::Result<Vec<Stream>> {
-        let site_streams = sites::extract_for_host(client, page, options).await?;
+        let site_streams =
+            sites::extract_for_host(client, page, options).await?;
         if !site_streams.is_empty() {
             return Ok(site_streams);
         }
@@ -44,7 +47,9 @@ impl PageExtractor {
                 options,
             ));
         }
-        Ok(options.quality.filter_streams(dedupe_streams(streams)))
+        Ok(options
+            .quality
+            .filter_streams(dedupe_streams(streams)))
     }
 }
 
@@ -55,7 +60,8 @@ impl Extractor for PageExtractor {
         page: &FetchedPage,
         options: &ExtractOptions,
     ) -> crate::error::Result<Vec<Stream>> {
-        self.extract_page(client, page, options).await
+        self.extract_page(client, page, options)
+            .await
     }
 }
 
@@ -70,13 +76,22 @@ fn apply_profile(
         .rules
         .iter()
         .flat_map(|rule| match rule {
-            ProfileRule::Selector {
+            | ProfileRule::Selector {
                 selector,
                 attr,
                 kind,
                 label_attr,
-            } => generic::select_attr(document, selector, attr, base, Some(*kind), *label_attr),
-            ProfileRule::EmbeddedJson(map) => json::apply_rule(html, map, options),
+            } => generic::select_attr(
+                document,
+                selector,
+                attr,
+                base,
+                Some(*kind),
+                *label_attr,
+            ),
+            | ProfileRule::EmbeddedJson(map) => {
+                json::apply_rule(html, map, options)
+            },
         })
         .collect()
 }
