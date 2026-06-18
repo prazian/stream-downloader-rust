@@ -1,4 +1,4 @@
-.PHONY: help build test fmt fmt-check clippy lint check run install clean doc prefetch-tools install-deps-mac
+.PHONY: help build test fmt fmt-check clippy lint check run install clean doc prefetch-tools
 
 CARGO ?= cargo
 BIN := stream-dl
@@ -37,10 +37,6 @@ install: build ## Install binary to ~/.cargo/bin
 
 prefetch-tools: ## Download bundled ffmpeg (cached under ~/.ffmpeg-sidecar)
 	$(CARGO) run -p $(BIN) --bin prefetch-tools
-
-install-deps-mac: ## Optional: system ffmpeg via Homebrew (not required)
-	@command -v brew >/dev/null || (echo "Homebrew not found" && exit 1)
-	brew install ffmpeg
 
 doc: ## Build API docs
 	$(CARGO) doc --workspace --no-deps
