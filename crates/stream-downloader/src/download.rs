@@ -353,7 +353,10 @@ fn parallel_chunks(total: u64, url: &url::Url) -> usize {
     };
     let by_chunk_size = (total / MIN_CHUNK_BYTES) as usize;
     chunks = chunks.min(by_chunk_size).clamp(1, MAX_PARALLEL_CHUNKS);
-    if url.host_str().is_some_and(|h| h.contains("phncdn.com")) {
+    if url
+        .host_str()
+        .is_some_and(|h| h.contains("phncdn.com") || h.contains("xnxx-cdn.com"))
+    {
         chunks = chunks.min(4);
     }
     chunks

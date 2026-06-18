@@ -116,3 +116,11 @@ stream-dl -u "https://www.pornhub.com/view_video.php?viewkey=660c3362e7ef7" -q 1
 ```
 
 Parses `flashvars_*` / `mediaDefinitions`; resolves remote `get_media` for progressive MP4 (falls back to HLS).
+
+## XNXX / XVideos
+
+```bash
+stream-dl -u "https://www.xnxx.com/video-1cpbmdea/wild_gangbang_with_wild_girl_and_construction_workers" -q 1080p
+```
+
+Parses `html5player.setVideoUrl*` / `setVideoHLS`; progressive MP4 for low qualities, HLS master for 480p–1080p (via ffmpeg). Also works on `xvideos.com` and regional XNXX domains.

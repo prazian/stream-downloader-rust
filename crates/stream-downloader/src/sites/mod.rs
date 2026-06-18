@@ -5,6 +5,7 @@ pub mod okxxx;
 pub mod pornhub;
 pub mod rutube;
 pub mod vk;
+pub mod xnxx;
 pub mod yandex;
 pub mod youtube;
 
@@ -37,6 +38,9 @@ pub async fn extract_for_host(
     }
     if pornhub::matches_host(&page.info.url) {
         return pornhub::extract(client, page, options).await;
+    }
+    if xnxx::matches_host(&page.info.url) {
+        return xnxx::extract(client, page, options).await;
     }
     Ok(Vec::new())
 }

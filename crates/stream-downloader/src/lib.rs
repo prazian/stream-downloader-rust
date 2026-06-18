@@ -130,6 +130,9 @@ async fn refresh_stream(
     if sites::pornhub::matches_host(&page.info.url) {
         return sites::pornhub::refresh_stream(client, page, &stream).await;
     }
+    if sites::xnxx::matches_host(&page.info.url) {
+        return sites::xnxx::refresh_stream(client, page, &stream).await;
+    }
     Ok(stream)
 }
 
@@ -214,6 +217,23 @@ mod tests {
             .expect("discover");
         assert!(!streams.is_empty());
         assert!(!streams[0].hls);
+        assert_eq!(crate::quality::height_hint(&streams[0]), 1080);
+    }
+
+    #[tokio::test]
+    #[ignore = "network"]
+    async fn live_xnxx_discover() {
+        let session = Session::new();
+        let streams = session
+            .discover(
+                "https://www.xnxx.com/video-1cpbmdea/wild_gangbang_with_wild_girl_and_construction_workers",
+                &[MediaKind::Video],
+                Quality::Height(1080),
+            )
+            .await
+            .expect("discover");
+        assert!(!streams.is_empty());
+        assert!(streams[0].hls);
         assert_eq!(crate::quality::height_hint(&streams[0]), 1080);
     }
 
