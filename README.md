@@ -2,6 +2,8 @@
 
 Find and download media **files** delivered over HTTP (what players call a “stream” is a file URL).
 
+> **Disclaimer:** This project is for **educational and technical demonstration** only—studying Rust, HTTP media extraction, and site-specific patterns. You must **not** use it for illegal activity or to download content you are not authorized to access. See [DISCLAIMER.md](DISCLAIMER.md) for the full terms.
+
 ```bash
 make install
 make prefetch-tools   # optional: warm ffmpeg cache before first HD download
