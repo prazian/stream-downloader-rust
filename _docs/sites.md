@@ -28,22 +28,22 @@ Vimeo’s public player config is often blocked; uses the macOS app API (`api.vi
 
 ```bash
 # Yandex
-stream-dl -u "https://yandex.ru/video/preview/18025183134392203214" -o ~/Downloads
-stream-dl -u "https://yandex.ru/portal/video?stream_id=4dbb36ec4e0526d58f9f2dc8f0ecf374" -o ~/Downloads
-stream-dl -u "https://frontend.vh.yandex.ru/player/vIsS3AJqE7Y4" -o ~/Downloads
+stream-dl -u "https://yandex.ru/video/preview/<video-id>" -o ~/Downloads
+stream-dl -u "https://yandex.ru/portal/video?stream_id=<stream-id>" -o ~/Downloads
+stream-dl -u "https://frontend.vh.yandex.ru/player/<video-id>" -o ~/Downloads
 
 # OK.ru
-stream-dl -u "https://ok.ru/video/9729432226499" -q 1080p -o ~/Downloads
+stream-dl -u "https://ok.ru/video/<video-id>" -q 1080p -o ~/Downloads
 
 # okX
-stream-dl -u "https://ok.xxx/video/750877/" -q 720p -o ~/Downloads
+stream-dl -u "https://ok.xxx/video/<video-id>/" -q 720p -o ~/Downloads
 
 # PH
-stream-dl -u "https://www.pornhub.com/view_video.php?viewkey=660c3362e7ef7" -q 1080p -o ~/Downloads
+stream-dl -u "https://www.pornhub.com/view_video.php?viewkey=<video-key>" -q 1080p -o ~/Downloads
 
 # XN / XVid
-stream-dl -u "https://www.xnxx.com/video-1cpbmdea/wild_gangbang_with_wild_girl_and_construction_workers" -q 1080p -o ~/Downloads
+stream-dl -u "https://www.xnxx.com/video-1cpbmdea/<video-slug>" -q 1080p -o ~/Downloads
 
 # Vimeo
-stream-dl -u "https://vimeo.com/1181852916?fl=wc" -q 1080p -o ~/Downloads
+stream-dl -u "https://vimeo.com/<video-id>?fl=wc" -q 1080p -o ~/Downloads
 ```
