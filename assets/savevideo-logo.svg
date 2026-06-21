@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="Video">
+  <defs>
+    <linearGradient id="lux-bg" x1="32" y1="4" x2="32" y2="60" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1c2640" />
+      <stop offset="1" stop-color="#070a10" />
+    </linearGradient>
+    <linearGradient id="lux-gold" x1="24" y1="18" x2="44" y2="46" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff4d6" />
+      <stop offset="0.4" stop-color="#e8c872" />
+      <stop offset="1" stop-color="#a67c1a" />
+    </linearGradient>
+    <radialGradient id="lux-glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(32 32) scale(28)">
+      <stop stop-color="#c9a227" stop-opacity="0.22" />
+      <stop offset="1" stop-color="#c9a227" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#lux-bg)" />
+  <circle cx="32" cy="32" r="28" fill="url(#lux-glow)" />
+  <circle cx="32" cy="32" r="25" fill="#0e1420" />
+  <circle cx="32" cy="32" r="25" stroke="url(#lux-gold)" stroke-width="2.25" />
+  <path
+    fill="url(#lux-gold)"
+    d="M26 20c0-1.2 1.3-2 2.4-1.4l18 11.6c1 .6 1 2.2 0 2.8L28.4 44.4c-1.1.6-2.4-.2-2.4-1.4V20z"
+  />
+</svg>

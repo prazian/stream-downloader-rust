@@ -4,6 +4,12 @@ Download media files from a page URL.
 
 > **Disclaimer:** For learning and authorized use only. Do not download content you are not allowed to access. See [DISCLAIMER.md](DISCLAIMER.md).
 
+## Sponsored by
+
+<img src="assets/savevideo-logo.svg" alt="SaveVideo logo" width="24" height="24" align="top"> Sponsored by **[SaveVideo](https://savevideo.site/)**
+
+This project acknowledges sponsorship from [savevideo.site](https://savevideo.site/). Including this link does not constitute an endorsement of that website, its content, or its services. If you choose to use SaveVideo, you are responsible for reading and following the terms and conditions published there.
+
 ## Install
 
 ### From a release
